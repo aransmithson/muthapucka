@@ -124,6 +124,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); font-family:
 /* ── CENTER CANVAS ──────────────────────────────────────── */
 #canvas-area {
   flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative;
+  background: var(--s900);
 }
 #canvas-toolbar {
   display: flex; align-items: center; gap: 8px; padding: 8px 14px;
@@ -148,9 +149,23 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); font-family:
 }
 #level-name-input:focus { border-bottom-color: var(--accent); }
 
+/* Playfield container — centres the fixed-ratio canvas */
+#canvas-outer {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  overflow: hidden; background: var(--bg);
+}
+
+/* The actual playfield — matches the game's 480px-wide, dvh-minus-header/bottombar ratio */
 #canvas-wrap {
-  flex: 1; position: relative; overflow: hidden; cursor: crosshair;
+  position: relative; overflow: hidden; cursor: crosshair;
   background: #3d6b4a;
+  /* width capped at 480px; height derived from same ratio as game (480 × (100dvh - 128px) / 480) */
+  width: min(480px, 100%);
+  /* aspect ratio: game playfield = 480 wide, height = 100dvh - 128px.
+     We express this as a CSS aspect-ratio using a large-screen reference of 480/(dvh-128).
+     Use aspect-ratio with a calculated value via JS on resize instead. */
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px var(--s800), 0 8px 40px rgba(0,0,0,0.6);
 }
 #designCanvas { display: block; width: 100%; height: 100%; }
 
@@ -358,9 +373,11 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); font-family:
     </div>
   </div>
 
-  <div id="canvas-wrap" id="canvas-wrap">
-    <canvas id="designCanvas"></canvas>
-    <div id="connecting-hint">Click a Pipe Out to link it to this Pipe In</div>
+  <div id="canvas-outer">
+    <div id="canvas-wrap">
+      <canvas id="designCanvas"></canvas>
+      <div id="connecting-hint">Click a Pipe Out to link it to this Pipe In</div>
+    </div>
   </div>
 </div>
 
@@ -430,9 +447,31 @@ const canvas = document.getElementById('designCanvas');
 const ctx = canvas.getContext('2d');
 
 function resize() {
+  const outer = document.getElementById('canvas-outer');
   const wrap = document.getElementById('canvas-wrap');
-  W = wrap.clientWidth;
-  H = wrap.clientHeight;
+
+  // Game playfield dimensions: 480px wide, height = window.innerHeight - 128px
+  // (game header ~50px + bottom bar ~78px = 128px overhead)
+  const GAME_W = 480;
+  const GAME_H = window.innerHeight - 128;
+  const ratio = GAME_W / GAME_H; // ~portrait ratio
+
+  const availW = outer.clientWidth;
+  const availH = outer.clientHeight;
+
+  // Fit within available space while preserving game ratio
+  let pw = Math.min(availW, GAME_W);
+  let ph = pw / ratio;
+  if (ph > availH) { ph = availH; pw = ph * ratio; }
+
+  pw = Math.floor(pw);
+  ph = Math.floor(ph);
+
+  wrap.style.width = pw + 'px';
+  wrap.style.height = ph + 'px';
+
+  W = pw;
+  H = ph;
   canvas.width = W * devicePixelRatio;
   canvas.height = H * devicePixelRatio;
   canvas.style.width = W + 'px';

@@ -75,13 +75,13 @@ html, body { height:100%; overflow:hidden; background:var(--s900); font-family:'
       <div class="power-track"><div class="power-fill" id="power-fill" style="width:0%"></div></div>
       <div class="angle-display" id="angle-display">angle —</div>
     </div>
-    <div id="hint">drag back<br>to aim & shoot</div>
+    <div id="hint">click anywhere<br>to aim & shoot</div>
   </div>
 
   <div class="overlay" id="overlay-start">
     <div class="hole-badge">Welcome</div>
     <h1>Puck <em>Golf</em></h1>
-    <p>Drag back on the puck to set power and angle. Slide it into the hole in as few shots as possible.</p>
+    <p>Click anywhere on the course to aim — the puck fires in the opposite direction. Click further away for more power. Sink it in as few shots as possible.</p>
     <button class="btn" onclick="startGame()">Play Built-in Course</button>
     <button class="btn secondary" onclick="document.getElementById('levels-file-input').click()">Load Custom Levels</button>
     <input type="file" id="levels-file-input" accept=".json" class="hidden" onchange="loadCustomLevels(event)">
@@ -711,12 +711,14 @@ function drawSunkPuck(ts) {
 function drawDragGuide() {
   const dx=dragStart.x-dragCurrent.x, dy=dragStart.y-dragCurrent.y;
   const dist=Math.hypot(dx,dy);
+  if(dist<2) return;
   const maxD=Math.min(W,H)*0.35;
   const power=Math.min(dist/maxD,1);
   const spd=power*1400;
   const FRIC=Math.exp(-1.1/60);
   let px=puck.x,py=puck.y,pvx=dx/dist*spd,pvy=dy/dist*spd;
   ctx.save();
+  // Trajectory dots
   for(let i=0;i<36;i++){
     pvx*=FRIC; pvy*=FRIC; px+=pvx/60; py+=pvy/60;
     px=Math.max(puck.r,Math.min(W-puck.r,px));
@@ -767,14 +769,17 @@ function getPos(e){
 function onDown(e){
   if(state!=='idle')return; e.preventDefault();
   const pos=getPos(e);
-  if(Math.hypot(pos.x-puck.x,pos.y-puck.y)<puck.r*2.5){ state='dragging'; dragStart={...pos}; dragCurrent={...pos}; }
+  // Click/touch anywhere on the field to aim and shoot.
+  // dragStart is pinned to the puck; pointer position is the pull-back point.
+  state='dragging';
+  dragStart={x:puck.x, y:puck.y};
+  dragCurrent={...pos};
 }
 function onMove(e){ if(state!=='dragging')return; e.preventDefault(); dragCurrent=getPos(e); }
 function onUp(e){ if(state!=='dragging')return; e.preventDefault(); shoot(); }
-// mousedown / touchstart stay on canvas (to detect the initial puck hit)
+// mousedown/touchstart on canvas only; move+up on document so drag survives leaving the canvas edge
 canvas.addEventListener('mousedown',onDown);
 canvas.addEventListener('touchstart',onDown,{passive:false});
-// move + up go on document so drag keeps working when pointer leaves the canvas edge
 document.addEventListener('mousemove',onMove);
 document.addEventListener('mouseup',onUp);
 document.addEventListener('touchmove',onMove,{passive:false});
