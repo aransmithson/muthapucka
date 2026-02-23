@@ -101,7 +101,6 @@ label.btn input{display:none;}
     </label>
   </div>
 
-  <!-- Shown when multiple courses are found -->
   <div class="overlay hidden" id="overlay-courses">
     <div class="hole-badge">Choose a Course</div>
     <h1>Mutha Pucka <em>Golf</em></h1>
@@ -197,7 +196,7 @@ async function scanFolderForJson(){
   }catch(e){}
 
   // Always probe these so the game works on servers without directory listings
-  ['courses.json','puck-golf-levels.json','levels.json','course.json','holes.json']
+  ['courses.json','mutha-pucka-golf-levels.json','puck-golf-levels.json','levels.json','course.json','holes.json']
     .forEach(f=>found.add(f));
 
   return [...found];
@@ -247,41 +246,17 @@ function prettyName(filename){
     .replace(/\b\w/g,c=>c.toUpperCase());
 }
 
-function buildStartScreen(){
-  const n=detectedCourses.length;
-
-  if(n===0){
-    // No courses found — just show built-in play button
-    document.getElementById('start-badge').textContent='Welcome';
-    document.getElementById('start-desc').style.display='';
-    document.getElementById('start-buttons').innerHTML=
-      `<button class="btn" onclick="launchCourse(null)">Play Built-in Course</button>`;
-
-  } else if(n===1){
-    // One course found — surface it directly
-    const c=detectedCourses[0];
-    document.getElementById('start-badge').textContent='Course Ready';
-    document.getElementById('start-desc').style.display='none';
-    document.getElementById('start-buttons').innerHTML=`
-      <button class="btn" onclick="launchCourse(0)">
-        ▶ Play "${c.name}"
-        <span style="opacity:.5;font-size:10px;display:block;margin-top:2px;">${c.levels.length} holes · par ${totalPar(c.levels)}</span>
-      </button>
-      <button class="btn secondary" onclick="launchCourse(null)" style="margin-top:4px;">Play Built-in Course</button>`;
-
-  } else {
-    // Multiple courses — go straight to selection screen
-    showCourseSelectOverlay();
-  }
-}
-
 function totalPar(levels){ return levels.reduce((s,l)=>s+(l.par||3),0); }
+
+function buildStartScreen(){
+  // Always show the course list — includes all detected JSON courses + built-in
+  showCourseSelectOverlay();
+}
 
 function showCourseSelectOverlay(){
   document.getElementById('overlay-start').classList.add('hidden');
   document.getElementById('overlay-courses').classList.remove('hidden');
 
-  // Build including built-in as final option
   const all=[...detectedCourses, {name:'Built-in Course', levels:DEFAULT_LEVELS}];
   window._courses=all;
 
