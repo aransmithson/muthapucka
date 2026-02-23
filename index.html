@@ -53,7 +53,19 @@ html, body { height:100%; overflow:hidden; background:var(--s900); font-family:'
 .score-cell .sc-val.under { color:#4ade80; }
 .score-cell .sc-val.over { color:var(--accent-l); }
 #level-title { position:absolute; top:12px; left:50%; transform:translateX(-50%); font-size:11px; letter-spacing:0.15em; text-transform:uppercase; color:rgba(255,255,255,0.3); pointer-events:none; white-space:nowrap; }
-.hidden { display:none !important; }
+.course-card{
+  background:var(--s800);border:1px solid var(--s700);border-radius:10px;
+  padding:14px 18px;cursor:pointer;transition:all .15s;
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  text-align:left;
+}
+.course-card:hover{background:var(--s700);border-color:var(--s500);transform:translateY(-1px);}
+.course-card-name{font-size:15px;color:var(--s50);font-family:'DM Serif Display',serif;font-style:italic;}
+.course-card-meta{font-size:10px;color:var(--s500);margin-top:3px;letter-spacing:.06em;text-transform:uppercase;}
+.course-card-chevron{font-size:22px;color:var(--s600);line-height:1;flex-shrink:0;}
+label.btn,label.btn.secondary{display:flex;align-items:center;justify-content:center;cursor:pointer;}
+label.btn input{display:none;}
+.hidden{display:none !important;}
 </style>
 </head>
 <body>
@@ -75,17 +87,29 @@ html, body { height:100%; overflow:hidden; background:var(--s900); font-family:'
       <div class="power-track"><div class="power-fill" id="power-fill" style="width:0%"></div></div>
       <div class="angle-display" id="angle-display">angle —</div>
     </div>
-    <div id="hint">click anywhere<br>to aim & shoot</div>
+    <div id="hint">drag back<br>to aim & shoot</div>
   </div>
 
   <div class="overlay" id="overlay-start">
-    <div class="hole-badge">Welcome</div>
+    <div class="hole-badge" id="start-badge">Welcome</div>
     <h1>Puck <em>Golf</em></h1>
-    <p>Click anywhere on the course to aim — the puck fires in the opposite direction. Click further away for more power. Sink it in as few shots as possible.</p>
-    <button class="btn" onclick="startGame()">Play Built-in Course</button>
-    <button class="btn secondary" onclick="document.getElementById('levels-file-input').click()">Load Custom Levels</button>
-    <input type="file" id="levels-file-input" accept=".json" class="hidden" onchange="loadCustomLevels(event)">
-    <div id="custom-level-info" style="font-size:11px;color:#4ade80;display:none;"></div>
+    <p id="start-desc">Click anywhere on the course to aim — the puck fires in the opposite direction. Click further away for more power.</p>
+    <div id="start-buttons"></div>
+    <label class="btn secondary" style="cursor:pointer;">
+      Load Course File…
+      <input type="file" id="levels-file-input" accept=".json" class="hidden" onchange="loadCourseFile(event)">
+    </label>
+  </div>
+
+  <!-- Shown when multiple courses are found -->
+  <div class="overlay hidden" id="overlay-courses">
+    <div class="hole-badge">Choose a Course</div>
+    <h1>Puck <em>Golf</em></h1>
+    <div id="course-cards" style="width:100%;max-width:300px;display:flex;flex-direction:column;gap:8px;margin:8px 0 4px;"></div>
+    <label class="btn secondary" style="cursor:pointer;margin-top:4px;">
+      Load Course File…
+      <input type="file" id="levels-file-input2" accept=".json" class="hidden" onchange="loadCourseFile(event)">
+    </label>
   </div>
 
   <div class="overlay hidden" id="overlay-hole">
@@ -105,6 +129,7 @@ html, body { height:100%; overflow:hidden; background:var(--s900); font-family:'
     <p id="end-summary"></p>
     <div class="score-card" id="end-scorecard"></div>
     <button class="btn" onclick="startGame()">Play Again</button>
+    <button class="btn secondary" onclick="hideOverlays();detectAndShowStart()">Choose Course</button>
   </div>
 </div>
 
@@ -122,29 +147,159 @@ html, body { height:100%; overflow:hidden; background:var(--s900); font-family:'
 // ═══════════════════════════════════════════════════════════
 // LEVEL LOADING
 // ═══════════════════════════════════════════════════════════
-let LEVELS = [];
+let LEVELS=[];
 
-async function readLevelsFromFile(file) {
-  return new Promise((res, rej) => {
-    const reader = new FileReader();
-    reader.onload = e => {
-      try {
-        const data = JSON.parse(e.target.result);
-        if (!Array.isArray(data) || !data.length) throw new Error('Invalid format');
-        data.forEach(l => {
-          if (!l.name) l.name = 'Unnamed';
-          if (!l.par) l.par = 3;
-          if (!l.puck) l.puck = { x:0.12, y:0.5 };
-          if (!l.hole) l.hole = { x:0.85, y:0.5 };
-          if (!l.obstacles) l.obstacles = [];
-          if (!l.moving) l.moving = [];
-        });
-        res(data);
-      } catch(err) { rej(err); }
-    };
-    reader.onerror = () => rej(new Error('File read error'));
-    reader.readAsText(file);
+function normaliseLevels(data){
+  if(!Array.isArray(data)||!data.length) throw new Error('Expected a JSON array of holes');
+  data.forEach(l=>{
+    if(!l.name)     l.name='Unnamed';
+    if(!l.par)      l.par=3;
+    if(!l.puck)     l.puck={x:0.12,y:0.5};
+    if(!l.hole)     l.hole={x:0.85,y:0.5};
+    if(!l.obstacles)l.obstacles=[];
+    if(!l.moving)   l.moving=[];
   });
+  return data;
+}
+
+// Silently fetch+parse a JSON course file. Returns normalised array or null.
+async function fetchCourse(url){
+  try{
+    const r=await fetch(url,{cache:'no-cache'});
+    if(!r.ok) return null;
+    const data=await r.json();
+    return normaliseLevels(data);
+  }catch(e){ return null; }
+}
+
+// ═══════════════════════════════════════════════════════════
+// COURSE DETECTION & START SCREEN
+// ═══════════════════════════════════════════════════════════
+let detectedCourses=[];   // [{name, holes, levels}]
+
+async function detectAndShowStart(){
+  detectedCourses=[];
+
+  // 1. Try courses.json manifest — [{name, file}] or [{name, levels:[…]}]
+  const manifest=await fetchCourse('courses.json');
+  if(manifest){
+    // courses.json is itself an array of course descriptors
+    // Each entry should have {name, file} or {name, levels}
+    // But fetchCourse normalises as if it's a levels array — so re-fetch raw
+    try{
+      const r=await fetch('courses.json',{cache:'no-cache'});
+      const raw=await r.json();
+      if(Array.isArray(raw) && raw[0] && (raw[0].file||raw[0].levels)){
+        for(const entry of raw){
+          if(entry.levels){
+            try{ detectedCourses.push({name:entry.name||'Course', levels:normaliseLevels(entry.levels)}); }catch(e){}
+          } else if(entry.file){
+            const lvls=await fetchCourse(entry.file);
+            if(lvls) detectedCourses.push({name:entry.name||prettyName(entry.file), levels:lvls});
+          }
+        }
+      }
+    }catch(e){}
+  }
+
+  // 2. If no manifest, probe common filenames
+  if(!detectedCourses.length){
+    const candidates=[
+      'puck-golf-levels.json','levels.json','course.json',
+      'holes.json','courses.json'
+    ];
+    for(const f of candidates){
+      const lvls=await fetchCourse(f);
+      if(lvls) detectedCourses.push({name:prettyName(f), levels:lvls});
+    }
+  }
+
+  buildStartScreen();
+}
+
+function prettyName(filename){
+  return filename
+    .replace(/\.json$/i,'')
+    .replace(/[-_]/g,' ')
+    .replace(/\b\w/g,c=>c.toUpperCase());
+}
+
+function buildStartScreen(){
+  const n=detectedCourses.length;
+
+  if(n===0){
+    // No courses found — just show built-in play button
+    document.getElementById('start-badge').textContent='Welcome';
+    document.getElementById('start-desc').style.display='';
+    document.getElementById('start-buttons').innerHTML=
+      `<button class="btn" onclick="launchCourse(null)">Play Built-in Course</button>`;
+
+  } else if(n===1){
+    // One course found — surface it directly
+    const c=detectedCourses[0];
+    document.getElementById('start-badge').textContent='Course Ready';
+    document.getElementById('start-desc').style.display='none';
+    document.getElementById('start-buttons').innerHTML=`
+      <button class="btn" onclick="launchCourse(0)">
+        ▶ Play "${c.name}"
+        <span style="opacity:.5;font-size:10px;display:block;margin-top:2px;">${c.levels.length} holes · par ${totalPar(c.levels)}</span>
+      </button>
+      <button class="btn secondary" onclick="launchCourse(null)" style="margin-top:4px;">Play Built-in Course</button>`;
+
+  } else {
+    // Multiple courses — go straight to selection screen
+    showCourseSelectOverlay();
+  }
+}
+
+function totalPar(levels){ return levels.reduce((s,l)=>s+(l.par||3),0); }
+
+function showCourseSelectOverlay(){
+  document.getElementById('overlay-start').classList.add('hidden');
+  document.getElementById('overlay-courses').classList.remove('hidden');
+
+  // Build including built-in as final option
+  const all=[...detectedCourses, {name:'Built-in Course', levels:DEFAULT_LEVELS}];
+  window._courses=all;
+
+  document.getElementById('course-cards').innerHTML=all.map((c,i)=>`
+    <div class="course-card" onclick="launchCourse(${i})">
+      <div>
+        <div class="course-card-name">${c.name}</div>
+        <div class="course-card-meta">${c.levels.length} hole${c.levels.length!==1?'s':''} · par ${totalPar(c.levels)}</div>
+      </div>
+      <span class="course-card-chevron">›</span>
+    </div>`).join('');
+}
+
+// i=null → built-in, i=number → detectedCourses[i] or _courses[i]
+window.launchCourse=function(i){
+  LEVELS = i===null ? DEFAULT_LEVELS
+         : window._courses ? window._courses[i].levels
+         : detectedCourses[i].levels;
+  startGame();
+};
+
+async function loadCourseFile(e){
+  const file=e.target.files?.[0]; if(!file)return;
+  try{
+    const text=await file.text();
+    LEVELS=normaliseLevels(JSON.parse(text));
+    startGame();
+  }catch(err){ alert('Could not load course: '+err.message); }
+  e.target.value='';
+}
+
+// ═══════════════════════════════════════════════════════════
+// GAME FLOW
+// ═══════════════════════════════════════════════════════════
+function startGame(){
+  if(!LEVELS.length) LEVELS=DEFAULT_LEVELS;
+  currentLevel=0; totalShots=0; shotCount=0; levelScores=[];
+  hideOverlays(); resize(); loadLevel(0);
+  if(frameId) cancelAnimationFrame(frameId);
+  lastTime=performance.now();
+  frameId=requestAnimationFrame(gameLoop);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -711,14 +866,13 @@ function drawSunkPuck(ts) {
 function drawDragGuide() {
   const dx=dragStart.x-dragCurrent.x, dy=dragStart.y-dragCurrent.y;
   const dist=Math.hypot(dx,dy);
-  if(dist<2) return;
+  if(dist<2)return;
   const maxD=Math.min(W,H)*0.35;
   const power=Math.min(dist/maxD,1);
   const spd=power*1400;
   const FRIC=Math.exp(-1.1/60);
   let px=puck.x,py=puck.y,pvx=dx/dist*spd,pvy=dy/dist*spd;
   ctx.save();
-  // Trajectory dots
   for(let i=0;i<36;i++){
     pvx*=FRIC; pvy*=FRIC; px+=pvx/60; py+=pvy/60;
     px=Math.max(puck.r,Math.min(W-puck.r,px));
@@ -769,15 +923,12 @@ function getPos(e){
 function onDown(e){
   if(state!=='idle')return; e.preventDefault();
   const pos=getPos(e);
-  // Click/touch anywhere on the field to aim and shoot.
-  // dragStart is pinned to the puck; pointer position is the pull-back point.
   state='dragging';
   dragStart={x:puck.x, y:puck.y};
   dragCurrent={...pos};
 }
 function onMove(e){ if(state!=='dragging')return; e.preventDefault(); dragCurrent=getPos(e); }
 function onUp(e){ if(state!=='dragging')return; e.preventDefault(); shoot(); }
-// mousedown/touchstart on canvas only; move+up on document so drag survives leaving the canvas edge
 canvas.addEventListener('mousedown',onDown);
 canvas.addEventListener('touchstart',onDown,{passive:false});
 document.addEventListener('mousemove',onMove);
@@ -797,31 +948,6 @@ function shoot(){
   document.getElementById('power-fill').style.width='0%';
   document.getElementById('angle-display').textContent='angle —';
   updateStats();
-}
-
-// ═══════════════════════════════════════════════════════════
-// GAME FLOW
-// ═══════════════════════════════════════════════════════════
-async function loadCustomLevels(e){
-  const file=e.target.files[0]; if(!file)return;
-  try{
-    const loaded=await readLevelsFromFile(file);
-    LEVELS=loaded;
-    const info=document.getElementById('custom-level-info');
-    info.textContent=`✓ Loaded ${loaded.length} hole${loaded.length!==1?'s':''} — "${loaded[0].name}" …`;
-    info.style.display='block';
-    document.querySelector('#overlay-start .btn').textContent=`Play Custom Course (${loaded.length} holes)`;
-  }catch(err){ alert('Failed to load levels: '+err.message); }
-  e.target.value='';
-}
-
-function startGame(){
-  if(!LEVELS.length) LEVELS=DEFAULT_LEVELS;
-  currentLevel=0; totalShots=0; shotCount=0; levelScores=[];
-  hideOverlays(); resize(); loadLevel(0);
-  if(frameId) cancelAnimationFrame(frameId);
-  lastTime=performance.now();
-  frameId=requestAnimationFrame(gameLoop);
 }
 
 function showHoleComplete(){
@@ -851,7 +977,7 @@ function showEndScreen(){
   }).join('');
   document.getElementById('overlay-end').classList.remove('hidden');
 }
-function hideOverlays(){ ['overlay-start','overlay-hole','overlay-end'].forEach(id=>document.getElementById(id).classList.add('hidden')); }
+function hideOverlays(){ ['overlay-start','overlay-courses','overlay-hole','overlay-end'].forEach(id=>document.getElementById(id).classList.add('hidden')); }
 function updateStats(){
   document.getElementById('stat-hole').textContent=`${currentLevel+1}/${LEVELS.length}`;
   document.getElementById('stat-par').textContent=LEVELS[currentLevel].par;
@@ -859,8 +985,9 @@ function updateStats(){
   el.className='stat-value'+(shotCount>LEVELS[currentLevel].par?' bad':shotCount>0?' good':'');
 }
 
-// Init
+// Init — detect any course files, then show the start screen
 resize();
+detectAndShowStart();
 </script>
 </body>
 </html>

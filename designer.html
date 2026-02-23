@@ -69,23 +69,54 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); font-family:
 #props-panel::-webkit-scrollbar-track { background: transparent; }
 #props-panel::-webkit-scrollbar-thumb { background: var(--s700); border-radius: 4px; }
 
-.prop-group { margin-bottom: 10px; }
-.prop-label { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--s500); margin-bottom: 4px; display: block; }
-.prop-row { display: flex; gap: 6px; align-items: center; margin-bottom: 5px; }
-.prop-row label { font-size: 10px; color: var(--s500); width: 30px; flex-shrink: 0; }
-.prop-input {
-  flex: 1; background: var(--s800); border: 1px solid var(--s700); border-radius: 4px;
-  color: var(--s100); font-family: 'DM Mono', monospace; font-size: 11px;
-  padding: 4px 7px; outline: none; transition: border-color 0.1s;
-}
-.prop-input:focus { border-color: var(--accent); }
-.prop-input[type=range] { padding: 0; background: transparent; border: none; cursor: pointer; }
-.prop-input[type=range]::-webkit-slider-runnable-track { background: var(--s700); height: 3px; border-radius: 2px; }
-.prop-input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: var(--accent); border-radius: 50%; margin-top: -4.5px; }
-.prop-val { font-size: 10px; color: var(--s400); width: 34px; text-align: right; flex-shrink: 0; }
-
-.prop-heading { font-size: 10px; color: var(--s300); font-weight: 500; margin: 10px 0 5px; letter-spacing: 0.03em; }
+.prop-heading { font-size: 10px; color: var(--s300); font-weight: 500; margin: 6px 0 8px; letter-spacing: 0.05em; text-transform: uppercase; }
 .no-selection { font-size: 11px; color: var(--s600); text-align: center; padding: 20px 10px; line-height: 1.6; }
+
+/* Pixel-perfect input grid */
+.px-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 6px;
+}
+.px-row {
+  display: flex; flex-direction: column; gap: 2px;
+}
+.px-row-full {
+  grid-column: 1 / -1;
+}
+.px-label {
+  font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--s500);
+}
+.px-input {
+  background: var(--s800); border: 1px solid var(--s700); border-radius: 4px;
+  color: var(--s100); font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500;
+  padding: 5px 7px; outline: none; transition: border-color 0.1s; width: 100%;
+  -moz-appearance: textfield;
+}
+.px-input::-webkit-inner-spin-button,
+.px-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.px-input:focus { border-color: var(--accent); }
+.px-input:hover { border-color: var(--s600); }
+select.px-input { cursor: pointer; }
+
+/* Rotation snap buttons row */
+.px-snap-btns {
+  display: flex; gap: 3px; margin-top: 4px;
+}
+.px-snap-btns button {
+  flex: 1; background: var(--s800); border: 1px solid var(--s700); border-radius: 4px;
+  color: var(--s400); font-family: 'DM Mono', monospace; font-size: 9px;
+  padding: 3px 2px; cursor: pointer; transition: all 0.1s;
+}
+.px-snap-btns button:hover { border-color: var(--s500); color: var(--s200); }
+
+/* Sub-group separator */
+.prop-subgroup {
+  border-top: 1px solid var(--s800); padding-top: 6px; margin-top: 4px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 6px;
+}
+
+/* Pipe status messages */
+.prop-linked { font-size: 10px; color: #a78bfa; margin: 5px 0; }
+.prop-unlinked { font-size: 10px; color: var(--s600); margin: 5px 0; }
 
 /* DELETE / DUPE BUTTONS */
 .item-actions { display: flex; gap: 5px; margin-top: 10px; }
@@ -555,6 +586,14 @@ function allItems() {
 }
 
 function findById(id) {
+  if (id === '__puck__') {
+    const lvl = currentLevel();
+    return { _id: '__puck__', type: '__puck__', x: lvl.puck.x, y: lvl.puck.y, _isPuck: true };
+  }
+  if (id === '__hole__') {
+    const lvl = currentLevel();
+    return { _id: '__hole__', type: '__hole__', x: lvl.hole.x, y: lvl.hole.y, _isHole: true };
+  }
   return allItems().find(o => o._id === id) || null;
 }
 
@@ -707,7 +746,7 @@ function onMove(e) {
     const nx = snap(x - dragOffX);
     const ny = snap(y - dragOffY);
     moveItemTo(item, nx, ny);
-    showProps(item);
+    showProps(findById(selectedId)); // re-fetch to get updated puck/hole coords
     updateJson(); render(); renderLayers();
     return;
   }
@@ -810,12 +849,16 @@ function buildPreview(tool, start, end, finalize = false) {
 // ITEM CENTER / MOVE / RESIZE
 // ══════════════════════════════════════════════════════════════
 function getItemCenterX(item) {
+  if (item._id === '__puck__') return nx2px(currentLevel().puck.x);
+  if (item._id === '__hole__') return nx2px(currentLevel().hole.x);
   if (item.type === 'rect') return nx2px(item.x) + nx2px(item.w) / 2;
   if (item.x !== undefined) return nx2px(item.x);
   if (item.x1 !== undefined) return nx2px((item.x1 + item.x2) / 2);
   return 0;
 }
 function getItemCenterY(item) {
+  if (item._id === '__puck__') return ny2py(currentLevel().puck.y);
+  if (item._id === '__hole__') return ny2py(currentLevel().hole.y);
   if (item.type === 'rect') return ny2py(item.y) + ny2py(item.h) / 2;
   if (item.y !== undefined) return ny2py(item.y);
   if (item.y1 !== undefined) return ny2py((item.y1 + item.y2) / 2);
@@ -823,6 +866,18 @@ function getItemCenterY(item) {
 }
 
 function moveItemTo(item, cx, cy) {
+  if (item._id === '__puck__') {
+    const lvl = currentLevel();
+    lvl.puck.x = Math.max(0, Math.min(1, px2nx(cx)));
+    lvl.puck.y = Math.max(0, Math.min(1, px2ny(cy)));
+    return;
+  }
+  if (item._id === '__hole__') {
+    const lvl = currentLevel();
+    lvl.hole.x = Math.max(0, Math.min(1, px2nx(cx)));
+    lvl.hole.y = Math.max(0, Math.min(1, px2ny(cy)));
+    return;
+  }
   const t = item.type;
   if (t === 'rect') {
     item.x = px2nx(cx - nx2px(item.w) / 2);
@@ -844,6 +899,7 @@ function isOnResizeHandle(x, y, item) {
 }
 
 function getResizeHandles(item) {
+  if (item._id === '__puck__' || item._id === '__hole__') return [];
   const t = item.type;
   if (t === 'rect') {
     const px = nx2px(item.x), py = ny2py(item.y);
@@ -915,6 +971,14 @@ function resizeItem(item, mx, my) {
 // HIT TEST
 // ══════════════════════════════════════════════════════════════
 function hitTest(x, y) {
+  // Check puck and hole first (they're always "on top" for selection)
+  const lvl = currentLevel();
+  const puckR = Math.min(W, H) * 0.0285;
+  const holeR = puckR * 1.15;
+  if (Math.hypot(x - nx2px(lvl.puck.x), y - ny2py(lvl.puck.y)) < puckR + 4)
+    return { _id: '__puck__', type: '__puck__', x: lvl.puck.x, y: lvl.puck.y };
+  if (Math.hypot(x - nx2px(lvl.hole.x), y - ny2py(lvl.hole.y)) < holeR + 4)
+    return { _id: '__hole__', type: '__hole__', x: lvl.hole.x, y: lvl.hole.y };
   const items = allItems().slice().reverse();
   for (const item of items) {
     if (hitItem(item, x, y)) return item;
@@ -1332,14 +1396,18 @@ function drawHole() {
   const hx = nx2px(lvl.hole.x), hy = ny2py(lvl.hole.y);
   const puckR = Math.min(W, H) * 0.0285;
   const hr = puckR * 1.15;
+  const sel = selectedId === '__hole__';
   ctx.save();
+  if (sel) {
+    ctx.shadowColor = '#facc15'; ctx.shadowBlur = 16;
+  }
   const grd = ctx.createRadialGradient(hx, hy, 0, hx, hy, hr * 2.5);
   grd.addColorStop(0, 'rgba(0,0,0,0.6)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(hx, hy, hr * 2.5, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(hx, hy, hr, 0, Math.PI * 2);
   ctx.fillStyle = '#111'; ctx.fill();
-  ctx.strokeStyle = activeTool === 'hole' ? '#facc15' : 'rgba(255,255,255,0.15)';
-  ctx.lineWidth = activeTool === 'hole' ? 2 : 1.5; ctx.stroke();
+  ctx.strokeStyle = sel ? '#facc15' : activeTool === 'hole' ? '#facc15' : 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = sel ? 2.5 : activeTool === 'hole' ? 2 : 1.5; ctx.stroke();
   const px = hx + hr * .5;
   ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.moveTo(px, hy); ctx.lineTo(px, hy - hr * 3.5); ctx.stroke();
@@ -1352,13 +1420,15 @@ function drawPuck() {
   const lvl = currentLevel();
   const px = nx2px(lvl.puck.x), py = ny2py(lvl.puck.y);
   const r = Math.min(W, H) * 0.0285;
+  const sel = selectedId === '__puck__';
   ctx.save();
   ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 3;
+  if (sel) { ctx.shadowColor = '#facc15'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 0; }
   const g = ctx.createRadialGradient(px - r*.3, py - r*.3, r*.1, px, py, r);
   g.addColorStop(0, '#f0eae2'); g.addColorStop(.6, '#d4cdc5'); g.addColorStop(1, '#a09890');
   ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
-  ctx.strokeStyle = activeTool === 'puck' ? '#facc15' : 'rgba(255,255,255,0.4)';
-  ctx.lineWidth = activeTool === 'puck' ? 2 : 1.5; ctx.stroke();
+  ctx.strokeStyle = sel ? '#facc15' : activeTool === 'puck' ? '#facc15' : 'rgba(255,255,255,0.4)';
+  ctx.lineWidth = sel ? 2.5 : activeTool === 'puck' ? 2 : 1.5; ctx.stroke();
   ctx.beginPath(); ctx.arc(px, py, r * .15, 0, Math.PI * 2);
   ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fill();
   ctx.restore();
@@ -1377,7 +1447,7 @@ function animateDesigner() {
 }
 
 // ══════════════════════════════════════════════════════════════
-// PROPERTIES PANEL
+// PROPERTIES PANEL — pixel-perfect numeric inputs
 // ══════════════════════════════════════════════════════════════
 function showProps(item) {
   const empty = document.getElementById('props-empty');
@@ -1392,31 +1462,247 @@ function showProps(item) {
   content.innerHTML = buildPropsHTML(item);
 }
 
-function rotRow(item) {
-  const deg = Math.round(((item._rotation || 0) * 180 / Math.PI + 3600) % 360);
-  return `
-  <div style="margin-top:6px;border-top:1px solid var(--s800);padding-top:7px;">
-    <div class="prop-row" style="align-items:center;">
-      <label style="width:36px;">Rot°</label>
-      <input class="prop-input" type="range" min="-3.1416" max="3.1416" step="0.01"
-        value="${+(item._rotation||0).toFixed(4)}"
-        oninput="setRotDeg(${item._id},+this.value);document.getElementById('rv_${item._id}').textContent=Math.round(this.value*180/Math.PI)+'°'">
-      <span class="prop-val" id="rv_${item._id}">${deg}°</span>
-    </div>
-    <div style="display:flex;gap:4px;margin-top:4px;">
-      <button class="act-btn" style="font-size:9px;" onclick="snapRot(${item._id},-90)">-90°</button>
-      <button class="act-btn" style="font-size:9px;" onclick="snapRot(${item._id},-45)">-45°</button>
-      <button class="act-btn" style="font-size:9px;" onclick="snapRot(${item._id},0)">Reset</button>
-      <button class="act-btn" style="font-size:9px;" onclick="snapRot(${item._id},45)">45°</button>
-      <button class="act-btn" style="font-size:9px;" onclick="snapRot(${item._id},90)">90°</button>
-    </div>
+// Convert normalised → pixel for display
+function toPx(normX, normY, normW, normH) {
+  return {
+    x: Math.round(normX * W),
+    y: Math.round(normY * H),
+    w: normW !== undefined ? Math.round(normW * W) : undefined,
+    h: normH !== undefined ? Math.round(normH * H) : undefined
+  };
+}
+
+function pxInput(id, field, label, val, min, max, onchange) {
+  return `<div class="px-row">
+    <span class="px-label">${label}</span>
+    <input class="px-input" type="number" id="pxi_${id}_${field}"
+      value="${Math.round(val)}" min="${min}" max="${max}" step="1"
+      oninput="${onchange}">
   </div>`;
 }
 
-window.setRotDeg = function(id, rad) {
+function buildPropsHTML(item) {
+  const t = item.type;
+  const id = item._id;
+  let html = `<div class="prop-heading">${typeLabel(t)}</div>`;
+  html += `<div class="px-grid">`;
+
+  // Helper: pixel input that writes back via setPxProp
+  const P = (field, label, val, min=0, max=9999) =>
+    pxInput(id, field, label, val, min, max, `setPxProp(${JSON.stringify(id)},'${field}',+this.value)`);
+
+  // Helper: normalised input (for r, thickness etc that use min(W,H) scale)
+  const N = (field, label, val, min=0, max=9999, scale='min') =>
+    pxInput(id, field, label,
+      scale === 'min' ? Math.round(val * Math.min(W,H)) :
+      scale === 'w'   ? Math.round(val * W) :
+                        Math.round(val * H),
+      min, max,
+      `setMinPxProp(${JSON.stringify(id)},'${field}',+this.value,'${scale}')`);
+
+  // Rotation row (always degrees, –180…180)
+  const R = () => {
+    const deg = Math.round(((item._rotation || 0) * 180 / Math.PI));
+    return `<div class="px-row px-row-full">
+      <span class="px-label">Rot°</span>
+      <input class="px-input" type="number" id="pxi_${id}_rot"
+        value="${deg}" min="-180" max="180" step="1"
+        oninput="setRotPx(${JSON.stringify(id)},+this.value)">
+      <div class="px-snap-btns">
+        <button onclick="snapRot(${JSON.stringify(id)},-90)">-90</button>
+        <button onclick="snapRot(${JSON.stringify(id)},-45)">-45</button>
+        <button onclick="snapRot(${JSON.stringify(id)},0)">0</button>
+        <button onclick="snapRot(${JSON.stringify(id)},45)">+45</button>
+        <button onclick="snapRot(${JSON.stringify(id)},90)">+90</button>
+      </div>
+    </div>`;
+  };
+
+  // Special: puck
+  if (id === '__puck__') {
+    const lvl = currentLevel();
+    html += P('x', 'X', lvl.puck.x * W, 0, W);
+    html += P('y', 'Y', lvl.puck.y * H, 0, H);
+    html += `</div>`;
+    return html;
+  }
+
+  // Special: hole
+  if (id === '__hole__') {
+    const lvl = currentLevel();
+    html += P('x', 'X', lvl.hole.x * W, 0, W);
+    html += P('y', 'Y', lvl.hole.y * H, 0, H);
+    html += `</div>`;
+    return html;
+  }
+
+  if (t === 'rect') {
+    html += P('x', 'X', item.x * W, 0, W);
+    html += P('y', 'Y', item.y * H, 0, H);
+    html += P('w', 'W', item.w * W, 1, W);
+    html += P('h', 'H', item.h * H, 1, H);
+    html += `</div>` + R();
+  }
+
+  else if (t === 'circle') {
+    html += P('x', 'X', item.x * W, 0, W);
+    html += P('y', 'Y', item.y * H, 0, H);
+    html += N('r', 'R', item.r, 1, 500);
+    html += `</div>`;
+  }
+
+  else if (t === 'diagonal') {
+    html += P('x1', 'X1', item.x1 * W, 0, W);
+    html += P('y1', 'Y1', item.y1 * H, 0, H);
+    html += P('x2', 'X2', item.x2 * W, 0, W);
+    html += P('y2', 'Y2', item.y2 * H, 0, H);
+    html += N('thickness', 'Thick', item.thickness, 1, 200);
+    html += `</div>`;
+  }
+
+  else if (t === 'windmill') {
+    html += P('x', 'X', item.x * W, 0, W);
+    html += P('y', 'Y', item.y * H, 0, H);
+    // Blade count — unitless integer
+    html += `<div class="px-row"><span class="px-label">Blades</span>
+      <input class="px-input" type="number" value="${item.blades||4}" min="2" max="8" step="1"
+        oninput="setProp(${JSON.stringify(id)},'blades',+this.value)"></div>`;
+    html += N('length', 'Len', item.length, 1, 500);
+    html += N('width', 'Width', item.width, 1, 200);
+    // Speed — displayed as-is (not pixels)
+    html += `<div class="px-row"><span class="px-label">Speed</span>
+      <input class="px-input" type="number" value="${+(item.speed||1.5).toFixed(2)}" min="-10" max="10" step="0.1"
+        oninput="setProp(${JSON.stringify(id)},'speed',+this.value)"></div>`;
+    html += `</div>` + R();
+  }
+
+  else if (t === 'rect' && item._moving) {
+    html = `<div class="prop-heading">Moving Block</div><div class="px-grid">`;
+    html += P('x', 'X', item.x * W, 0, W);
+    html += P('y', 'Y', item.y * H, 0, H);
+    html += P('w', 'W', item.w * W, 1, W);
+    html += P('h', 'H', item.h * H, 1, H);
+    html += `</div>`;
+    // Axis / Range / Speed in a mini sub-section
+    html += `<div class="prop-subgroup">`;
+    html += `<div class="px-row"><span class="px-label">Axis</span>
+      <select class="px-input" onchange="setProp(${JSON.stringify(id)},'axis',this.value)">
+        <option ${item.axis==='x'?'selected':''}>x</option>
+        <option ${item.axis==='y'?'selected':''}>y</option>
+      </select></div>`;
+    html += `<div class="px-row"><span class="px-label">Range</span>
+      <input class="px-input" type="number" value="${+(item.range||0.3).toFixed(3)}" min="0.01" max="1" step="0.01"
+        oninput="setProp(${JSON.stringify(id)},'range',+this.value)"></div>`;
+    html += `<div class="px-row"><span class="px-label">Speed</span>
+      <input class="px-input" type="number" value="${+(item.speed||1.2).toFixed(2)}" min="0.1" max="10" step="0.1"
+        oninput="setProp(${JSON.stringify(id)},'speed',+this.value)"></div>`;
+    html += `</div>` + R();
+  }
+
+  else if (t === 'orbit') {
+    html += P('x', 'X', item.x * W, 0, W);
+    html += P('y', 'Y', item.y * H, 0, H);
+    html += N('r', 'R', item.r, 1, 300);
+    html += N('orbitR', 'OrbitR', item.orbitR, 1, 600);
+    html += `</div>`;
+    html += `<div class="prop-subgroup">`;
+    html += `<div class="px-row"><span class="px-label">Shape</span>
+      <select class="px-input" onchange="setProp(${JSON.stringify(id)},'shape',this.value)">
+        <option ${item.shape==='circle'?'selected':''}>circle</option>
+        <option ${item.shape==='rect'?'selected':''}>rect</option>
+      </select></div>`;
+    html += `<div class="px-row"><span class="px-label">Speed</span>
+      <input class="px-input" type="number" value="${+(item.orbitSpeed||1.5).toFixed(2)}" min="-10" max="10" step="0.1"
+        oninput="setProp(${JSON.stringify(id)},'orbitSpeed',+this.value)"></div>`;
+    html += `<div class="px-row"><span class="px-label">Phase</span>
+      <input class="px-input" type="number" value="${+(item.orbitPhase||0).toFixed(2)}" min="0" max="6.28" step="0.1"
+        oninput="setProp(${JSON.stringify(id)},'orbitPhase',+this.value)"></div>`;
+    html += `</div>`;
+  }
+
+  else if (t === 'pipe-in' || t === 'pipe-out') {
+    html += P('x', 'X', item.x * W, 0, W);
+    html += P('y', 'Y', item.y * H, 0, H);
+    html += N('r', 'Size', item.r, 1, 300);
+    html += `</div>` + R();
+    if (t === 'pipe-in' && item.linkedTo) {
+      html += `<div class="prop-linked">✓ linked to pipe out</div>`;
+    } else if (t === 'pipe-in') {
+      html += `<div class="prop-unlinked">Not linked — use Link tool</div>`;
+    }
+  }
+
+  else {
+    html += `</div>`;
+  }
+
+  // Only show dupe/delete for real obstacles
+  if (id !== '__puck__' && id !== '__hole__') {
+    html += `<div class="item-actions">
+      <button class="act-btn" onclick="duplicateItem(${JSON.stringify(id)})">Dupe</button>
+      <button class="act-btn danger" onclick="deleteItem(${JSON.stringify(id)})">Delete</button>
+    </div>`;
+  }
+
+  return html;
+}
+
+// Set a W-normalised px property (x, y, w, h, x1, y1, x2, y2)
+window.setPxProp = function(id, field, pxVal) {
+  // puck/hole special handling
+  if (id === '__puck__') {
+    const lvl = currentLevel();
+    if (field === 'x') lvl.puck.x = Math.max(0, Math.min(1, pxVal / W));
+    if (field === 'y') lvl.puck.y = Math.max(0, Math.min(1, pxVal / H));
+    render(); updateJson(); return;
+  }
+  if (id === '__hole__') {
+    const lvl = currentLevel();
+    if (field === 'x') lvl.hole.x = Math.max(0, Math.min(1, pxVal / W));
+    if (field === 'y') lvl.hole.y = Math.max(0, Math.min(1, pxVal / H));
+    render(); updateJson(); return;
+  }
   const item = findById(id);
   if (!item) return;
-  item._rotation = rad;
+  const isW = ['x','w','x1','x2'].includes(field);
+  item[field] = Math.max(0, pxVal / (isW ? W : H));
+  render(); updateJson();
+};
+
+// Set a min(W,H)-normalised px property (r, thickness, etc.)
+window.setMinPxProp = function(id, field, pxVal, scale) {
+  const item = findById(id);
+  if (!item) return;
+  const div = scale === 'min' ? Math.min(W,H) : scale === 'w' ? W : H;
+  item[field] = Math.max(0, pxVal / div);
+  render(); updateJson();
+};
+
+window.setRotPx = function(id, deg) {
+  const item = findById(id);
+  if (!item) return;
+  item._rotation = deg * Math.PI / 180;
+  render(); updateJson();
+};
+
+function typeLabel(t) {
+  const map = {
+    rect: 'Rectangle', circle: 'Circle', diagonal: 'Diagonal Wall',
+    windmill: 'Windmill', orbit: 'Orbit Object',
+    'pipe-in': 'Pipe Entrance', 'pipe-out': 'Pipe Exit',
+    '__puck__': 'Puck Start', '__hole__': 'Hole'
+  };
+  if (t === 'rect') return 'Rectangle';
+  if (t === '__puck__') return 'Puck Start';
+  if (t === '__hole__') return 'Hole';
+  return map[t] || t;
+}
+
+
+window.setProp = function(id, key, val) {
+  const item = findById(id);
+  if (!item) return;
+  item[key] = val;
   render(); updateJson();
 };
 
@@ -1429,120 +1715,8 @@ window.snapRot = function(id, deg) {
   render(); updateJson();
 };
 
-function buildPropsHTML(item) {
-  const t = item.type;
-  let html = `<div class="prop-heading">${typeLabel(t)}</div>`;
-
-  function row(label, key, type, min, max, step, extra='') {
-    const val = item[key] !== undefined ? item[key] : '';
-    if (type === 'range') {
-      return `<div class="prop-row">
-        <label>${label}</label>
-        <input class="prop-input" type="range" min="${min}" max="${max}" step="${step || 0.01}" value="${+val.toFixed(4)}" oninput="setProp(${item._id},'${key}',+this.value);document.getElementById('pv_${key}').textContent=this.value" ${extra}>
-        <span class="prop-val" id="pv_${key}">${+val.toFixed(3)}</span>
-      </div>`;
-    }
-    if (type === 'select') {
-      return `<div class="prop-row"><label>${label}</label>
-        <select class="prop-input" onchange="setProp(${item._id},'${key}',this.value)">${extra.map(o=>`<option value="${o}" ${val==o?'selected':''}>${o}</option>`).join('')}</select></div>`;
-    }
-    return `<div class="prop-row"><label>${label}</label>
-      <input class="prop-input" type="${type||'number'}" value="${val}" step="${step||0.01}" min="${min||''}" max="${max||''}" oninput="setProp(${item._id},'${key}',${type==='text'?'this.value':'+this.value'})"></div>`;
-  }
-
-  if (t === 'rect') {
-    html += row('X', 'x', 'range', 0, 1, 0.005);
-    html += row('Y', 'y', 'range', 0, 1, 0.005);
-    html += row('W', 'w', 'range', 0.01, 1, 0.005);
-    html += row('H', 'h', 'range', 0.01, 1, 0.005);
-    html += rotRow(item);
-  }
-
-  if (t === 'circle') {
-    html += row('X', 'x', 'range', 0, 1, 0.005);
-    html += row('Y', 'y', 'range', 0, 1, 0.005);
-    html += row('R', 'r', 'range', 0.01, 0.3, 0.005);
-  }
-
-  if (t === 'diagonal') {
-    html += row('X1', 'x1', 'range', 0, 1, 0.005);
-    html += row('Y1', 'y1', 'range', 0, 1, 0.005);
-    html += row('X2', 'x2', 'range', 0, 1, 0.005);
-    html += row('Y2', 'y2', 'range', 0, 1, 0.005);
-    html += row('Thick', 'thickness', 'range', 0.005, 0.1, 0.002);
-  }
-
-  if (t === 'windmill') {
-    html += row('X', 'x', 'range', 0, 1, 0.005);
-    html += row('Y', 'y', 'range', 0, 1, 0.005);
-    html += row('Blades', 'blades', 'range', 2, 8, 1);
-    html += row('Len', 'length', 'range', 0.05, 0.4, 0.005);
-    html += row('Width', 'width', 'range', 0.008, 0.06, 0.002);
-    html += row('Speed', 'speed', 'range', 0.2, 5, 0.1);
-    html += rotRow(item);
-  }
-
-  if (t === 'rect' && item._moving) {
-    html = `<div class="prop-heading">Moving Block</div>`;
-    html += row('X', 'x', 'range', 0, 1, 0.005);
-    html += row('Y', 'y', 'range', 0, 1, 0.005);
-    html += row('W', 'w', 'range', 0.01, 0.5, 0.005);
-    html += row('H', 'h', 'range', 0.01, 0.5, 0.005);
-    html += row('Axis', 'axis', 'select', '', '', '', ['x', 'y']);
-    html += row('Range', 'range', 'range', 0.05, 0.9, 0.01);
-    html += row('Speed', 'speed', 'range', 0.1, 5, 0.1);
-    html += rotRow(item);
-  }
-
-  if (t === 'orbit') {
-    html += row('X', 'x', 'range', 0, 1, 0.005);
-    html += row('Y', 'y', 'range', 0, 1, 0.005);
-    html += row('Shape', 'shape', 'select', '', '', '', ['circle', 'rect']);
-    html += row('R / W', 'r', 'range', 0.01, 0.15, 0.005);
-    html += row('Orbit R', 'orbitR', 'range', 0.05, 0.5, 0.005);
-    html += row('Speed', 'orbitSpeed', 'range', -5, 5, 0.1);
-    html += row('Phase', 'orbitPhase', 'range', 0, 6.28, 0.1);
-  }
-
-  if (t === 'pipe-in' || t === 'pipe-out') {
-    html += row('X', 'x', 'range', 0, 1, 0.005);
-    html += row('Y', 'y', 'range', 0, 1, 0.005);
-    html += row('Size', 'r', 'range', 0.02, 0.1, 0.005);
-    html += rotRow(item);
-    if (t === 'pipe-in' && item.linkedTo) {
-      html += `<div style="font-size:10px;color:#a78bfa;margin-top:6px;">✓ Linked to pipe out #${item.linkedTo}</div>`;
-    }
-    if (t === 'pipe-in' && !item.linkedTo) {
-      html += `<div style="font-size:10px;color:var(--s600);margin-top:6px;">Not linked. Use Link tool.</div>`;
-    }
-  }
-
-  html += `<div class="item-actions">
-    <button class="act-btn" onclick="duplicateItem(${item._id})">Dupe</button>
-    <button class="act-btn danger" onclick="deleteItem(${item._id})">Delete</button>
-  </div>`;
-
-  return html;
-}
-
-function typeLabel(t) {
-  const map = {
-    rect: 'Rectangle', circle: 'Circle', diagonal: 'Diagonal Wall',
-    windmill: 'Windmill', orbit: 'Orbit Object',
-    'pipe-in': 'Pipe Entrance', 'pipe-out': 'Pipe Exit'
-  };
-  if (t === 'rect') return 'Rectangle / Moving Block';
-  return map[t] || t;
-}
-
-window.setProp = function(id, key, val) {
-  const item = findById(id);
-  if (!item) return;
-  item[key] = val;
-  render(); updateJson();
-};
-
 window.deleteItem = function(id) {
+  if (id === '__puck__' || id === '__hole__') return;
   saveUndo();
   removeById(id);
   selectedId = null;
@@ -1552,6 +1726,7 @@ window.deleteItem = function(id) {
 };
 
 window.duplicateItem = function(id) {
+  if (id === '__puck__' || id === '__hole__') return;
   const item = findById(id);
   if (!item) return;
   saveUndo();
@@ -1587,20 +1762,34 @@ const LAYER_COLORS = {
 function renderLayers() {
   const list = document.getElementById('layers-list');
   const items = allItems();
-  if (!items.length) {
-    list.innerHTML = '<div style="font-size:10px;color:var(--s700);padding:10px;text-align:center;">No items yet</div>';
-    return;
-  }
-  list.innerHTML = items.slice().reverse().map(item => {
-    const active = item._id === selectedId ? ' active' : '';
-    const icon = LAYER_ICONS[item.type] || '?';
-    const col = LAYER_COLORS[item.type] || '#a8a29e';
-    const label = item.type === 'rect' && item._moving ? 'mover' : item.type;
-    return `<div class="layer-item${active}" onclick="selectLayer(${item._id})">
-      <span class="layer-icon" style="color:${col};font-size:12px;">${icon}</span>
-      <span class="layer-type">${label}</span>
+
+  // Always-present puck + hole entries at top
+  const puckActive = selectedId === '__puck__' ? ' active' : '';
+  const holeActive = selectedId === '__hole__' ? ' active' : '';
+  let html = `
+    <div class="layer-item${holeActive}" onclick="selectLayer('__hole__')">
+      <span class="layer-icon" style="color:#dc2626;font-size:11px;">⛳</span>
+      <span class="layer-type">hole</span>
+    </div>
+    <div class="layer-item${puckActive}" onclick="selectLayer('__puck__')">
+      <span class="layer-icon" style="color:#d4cdc5;font-size:11px;">●</span>
+      <span class="layer-type">puck start</span>
     </div>`;
-  }).join('');
+
+  if (items.length) {
+    html += items.slice().reverse().map(item => {
+      const active = item._id === selectedId ? ' active' : '';
+      const icon = LAYER_ICONS[item.type] || '?';
+      const col = LAYER_COLORS[item.type] || '#a8a29e';
+      const label = item.type === 'rect' && item._moving ? 'mover' : item.type;
+      return `<div class="layer-item${active}" onclick="selectLayer(${JSON.stringify(item._id)})">
+        <span class="layer-icon" style="color:${col};font-size:12px;">${icon}</span>
+        <span class="layer-type">${label}</span>
+      </div>`;
+    }).join('');
+  }
+
+  list.innerHTML = html;
 }
 
 window.selectLayer = function(id) {
