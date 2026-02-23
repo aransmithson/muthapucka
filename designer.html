@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Puck Golf — Level Designer</title>
+<title>Mutha Pucka Golf — Level Designer</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -294,7 +294,7 @@ select.px-input { cursor: pointer; }
 <!-- ═══════════════════════ LEFT PANEL ═══════════════════════ -->
 <div id="left-panel">
   <div id="panel-header">
-    <h1>Puck <em>Golf</em></h1>
+    <h1>Mutha Pucka <em>Golf</em></h1>
     <small>Level Designer</small>
   </div>
 
@@ -1908,7 +1908,7 @@ function exportLevels() {
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = 'puck-golf-levels.json';
+  a.href = url; a.download = 'mutha-pucka-golf-levels.json';
   a.click();
   URL.revokeObjectURL(url);
   toast('Exported JSON!');
@@ -2046,13 +2046,13 @@ function testLevel() {
   window.addEventListener('DOMContentLoaded',()=>{
     const data = JSON.parse(decodeURIComponent(atob('${encoded}')));
     localStorage.setItem('_pgd_test', JSON.stringify(data));
-    window.location = 'puck-golf.html';
+    window.location = 'mutha-pucka-golf.html';
   });
   </sc` + `ript></head><body>Loading test…</body></html>`;
 
   // Instead, just export and show instructions
   exportLevels();
-  toast('Exported! Load in Puck Golf via "Load Custom Levels"');
+  toast('Exported! Load in Mutha Pucka Golf via "Load Custom Levels"');
 }
 
 // ══════════════════════════════════════════════════════════════

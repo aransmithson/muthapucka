@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Puck Golf</title>
+<title>Mutha Pucka Golf</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -71,7 +71,7 @@ label.btn input{display:none;}
 <body>
 <div id="app">
   <div id="header">
-    <div id="logo">Puck <em>Golf</em></div>
+    <div id="logo">Mutha Pucka <em>Golf</em></div>
     <div id="stats">
       <div class="stat"><span class="stat-label">Hole</span><span class="stat-value" id="stat-hole">1/5</span></div>
       <div class="stat"><span class="stat-label">Par</span><span class="stat-value" id="stat-par">3</span></div>
@@ -92,7 +92,7 @@ label.btn input{display:none;}
 
   <div class="overlay" id="overlay-start">
     <div class="hole-badge" id="start-badge">Welcome</div>
-    <h1>Puck <em>Golf</em></h1>
+    <h1>Mutha Pucka <em>Golf</em></h1>
     <p id="start-desc">Click anywhere on the course to aim — the puck fires in the opposite direction. Click further away for more power.</p>
     <div id="start-buttons"></div>
     <label class="btn secondary" style="cursor:pointer;">
@@ -104,7 +104,7 @@ label.btn input{display:none;}
   <!-- Shown when multiple courses are found -->
   <div class="overlay hidden" id="overlay-courses">
     <div class="hole-badge">Choose a Course</div>
-    <h1>Puck <em>Golf</em></h1>
+    <h1>Mutha Pucka <em>Golf</em></h1>
     <div id="course-cards" style="width:100%;max-width:300px;display:flex;flex-direction:column;gap:8px;margin:8px 0 4px;"></div>
     <label class="btn secondary" style="cursor:pointer;margin-top:4px;">
       Load Course File…
@@ -175,43 +175,66 @@ async function fetchCourse(url){
 // ═══════════════════════════════════════════════════════════
 // COURSE DETECTION & START SCREEN
 // ═══════════════════════════════════════════════════════════
-let detectedCourses=[];   // [{name, holes, levels}]
+let detectedCourses=[];   // [{name, levels, _src}]
+
+// Fetch the directory listing to find all .json files in the web folder,
+// then fall back to probing well-known filenames for servers without autoindex.
+async function scanFolderForJson(){
+  const found=new Set();
+  try{
+    const r=await fetch('./',{cache:'no-cache'});
+    if(r.ok){
+      const html=await r.text();
+      const re=/href="([^"#?]+\.json)"/gi;
+      let m;
+      while((m=re.exec(html))!==null){
+        const f=m[1];
+        if(!f.startsWith('http')&&!f.startsWith('/')&&!f.includes('..')){
+          found.add(f);
+        }
+      }
+    }
+  }catch(e){}
+
+  // Always probe these so the game works on servers without directory listings
+  ['courses.json','puck-golf-levels.json','levels.json','course.json','holes.json']
+    .forEach(f=>found.add(f));
+
+  return [...found];
+}
 
 async function detectAndShowStart(){
   detectedCourses=[];
 
-  // 1. Try courses.json manifest — [{name, file}] or [{name, levels:[…]}]
-  const manifest=await fetchCourse('courses.json');
-  if(manifest){
-    // courses.json is itself an array of course descriptors
-    // Each entry should have {name, file} or {name, levels}
-    // But fetchCourse normalises as if it's a levels array — so re-fetch raw
+  const jsonFiles=await scanFolderForJson();
+
+  for(const filename of jsonFiles){
     try{
-      const r=await fetch('courses.json',{cache:'no-cache'});
+      const r=await fetch(filename,{cache:'no-cache'});
+      if(!r.ok) continue;
       const raw=await r.json();
-      if(Array.isArray(raw) && raw[0] && (raw[0].file||raw[0].levels)){
+
+      // Format A: manifest  [{name, file}]  or  [{name, levels:[…]}]
+      if(Array.isArray(raw)&&raw.length&&(raw[0].file||raw[0].levels)){
         for(const entry of raw){
           if(entry.levels){
-            try{ detectedCourses.push({name:entry.name||'Course', levels:normaliseLevels(entry.levels)}); }catch(e){}
+            try{ detectedCourses.push({name:entry.name||'Course', levels:normaliseLevels(entry.levels), _src:filename}); }catch(e){}
           } else if(entry.file){
             const lvls=await fetchCourse(entry.file);
-            if(lvls) detectedCourses.push({name:entry.name||prettyName(entry.file), levels:lvls});
+            if(lvls) detectedCourses.push({name:entry.name||prettyName(entry.file), levels:lvls, _src:entry.file});
           }
         }
+        continue;
       }
-    }catch(e){}
-  }
 
-  // 2. If no manifest, probe common filenames
-  if(!detectedCourses.length){
-    const candidates=[
-      'puck-golf-levels.json','levels.json','course.json',
-      'holes.json','courses.json'
-    ];
-    for(const f of candidates){
-      const lvls=await fetchCourse(f);
-      if(lvls) detectedCourses.push({name:prettyName(f), levels:lvls});
-    }
+      // Format B: plain holes array  [{name, par, puck, hole, …}]
+      try{
+        const lvls=normaliseLevels(Array.isArray(raw)?raw:[raw]);
+        const alreadyLoaded=detectedCourses.some(c=>c._src===filename);
+        if(!alreadyLoaded) detectedCourses.push({name:prettyName(filename), levels:lvls, _src:filename});
+      }catch(e){}
+
+    }catch(e){}
   }
 
   buildStartScreen();
