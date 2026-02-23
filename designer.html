@@ -1,0 +1,1858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Puck Golf — Level Designer</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0f0e0d;
+  --s50: #fafaf9; --s100: #f5f5f4; --s200: #e7e5e4;
+  --s300: #d6d3d1; --s400: #a8a29e; --s500: #78716c;
+  --s600: #57534e; --s700: #44403c; --s800: #292524; --s900: #1c1917;
+  --accent: #c2410c; --accent-l: #ea580c; --accent-bright: #f97316;
+  --green: #4ade80; --blue: #38bdf8; --yellow: #facc15;
+  --pipe-in: #22d3ee; --pipe-out: #a78bfa;
+  --panel-w: 280px;
+}
+html, body { height: 100%; overflow: hidden; background: var(--bg); font-family: 'DM Mono', monospace; color: var(--s200); }
+
+/* ── LAYOUT ──────────────────────────────────────── */
+#app { display: flex; height: 100dvh; }
+
+/* LEFT PANEL */
+#left-panel {
+  width: var(--panel-w);
+  flex-shrink: 0;
+  background: var(--s900);
+  border-right: 1px solid var(--s800);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#panel-header {
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--s800);
+  flex-shrink: 0;
+}
+#panel-header h1 { font-family: 'DM Serif Display', serif; font-size: 18px; color: var(--s50); letter-spacing: -0.02em; }
+#panel-header h1 em { font-style: italic; color: var(--s500); }
+#panel-header small { font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--s600); }
+
+/* TOOL SECTIONS */
+.panel-section {
+  border-bottom: 1px solid var(--s800);
+  flex-shrink: 0;
+}
+.section-label {
+  font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--s600); padding: 8px 14px 5px;
+}
+.tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px 8px 8px; }
+.tool-btn {
+  background: var(--s800); border: 1px solid transparent; border-radius: 6px;
+  padding: 7px 6px; font-family: 'DM Mono', monospace; font-size: 10px;
+  color: var(--s400); cursor: pointer; transition: all 0.12s;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  letter-spacing: 0.05em; line-height: 1.2;
+}
+.tool-btn svg { flex-shrink: 0; }
+.tool-btn:hover { background: var(--s700); color: var(--s200); border-color: var(--s600); }
+.tool-btn.active { background: var(--accent); color: #fff; border-color: var(--accent-l); }
+.tool-btn.active svg { stroke: #fff; }
+
+/* PROP PANEL */
+#props-panel { flex: 1; overflow-y: auto; padding: 8px 10px 16px; scrollbar-width: thin; scrollbar-color: var(--s700) transparent; }
+#props-panel::-webkit-scrollbar { width: 4px; }
+#props-panel::-webkit-scrollbar-track { background: transparent; }
+#props-panel::-webkit-scrollbar-thumb { background: var(--s700); border-radius: 4px; }
+
+.prop-group { margin-bottom: 10px; }
+.prop-label { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--s500); margin-bottom: 4px; display: block; }
+.prop-row { display: flex; gap: 6px; align-items: center; margin-bottom: 5px; }
+.prop-row label { font-size: 10px; color: var(--s500); width: 30px; flex-shrink: 0; }
+.prop-input {
+  flex: 1; background: var(--s800); border: 1px solid var(--s700); border-radius: 4px;
+  color: var(--s100); font-family: 'DM Mono', monospace; font-size: 11px;
+  padding: 4px 7px; outline: none; transition: border-color 0.1s;
+}
+.prop-input:focus { border-color: var(--accent); }
+.prop-input[type=range] { padding: 0; background: transparent; border: none; cursor: pointer; }
+.prop-input[type=range]::-webkit-slider-runnable-track { background: var(--s700); height: 3px; border-radius: 2px; }
+.prop-input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: var(--accent); border-radius: 50%; margin-top: -4.5px; }
+.prop-val { font-size: 10px; color: var(--s400); width: 34px; text-align: right; flex-shrink: 0; }
+
+.prop-heading { font-size: 10px; color: var(--s300); font-weight: 500; margin: 10px 0 5px; letter-spacing: 0.03em; }
+.no-selection { font-size: 11px; color: var(--s600); text-align: center; padding: 20px 10px; line-height: 1.6; }
+
+/* DELETE / DUPE BUTTONS */
+.item-actions { display: flex; gap: 5px; margin-top: 10px; }
+.act-btn {
+  flex: 1; background: var(--s800); border: 1px solid var(--s700); border-radius: 5px;
+  color: var(--s400); font-family: 'DM Mono', monospace; font-size: 10px;
+  padding: 5px 4px; cursor: pointer; transition: all 0.1s; letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.act-btn:hover { border-color: var(--s500); color: var(--s200); }
+.act-btn.danger:hover { background: #7f1d1d; border-color: #ef4444; color: #fca5a5; }
+
+/* LEVEL LIST */
+#level-list-wrap { flex-shrink: 0; border-top: 1px solid var(--s800); max-height: 160px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--s700) transparent; }
+.level-item {
+  display: flex; align-items: center; padding: 7px 12px; cursor: pointer;
+  font-size: 10px; gap: 8px; transition: background 0.1s; border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.level-item:hover { background: var(--s800); }
+.level-item.active { background: rgba(194,65,12,0.18); }
+.level-num { color: var(--s600); width: 16px; flex-shrink: 0; }
+.level-name { flex: 1; color: var(--s300); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.level-par { color: var(--s600); font-size: 9px; }
+.level-del { background: none; border: none; color: var(--s700); cursor: pointer; font-size: 13px; padding: 0 2px; transition: color 0.1s; }
+.level-del:hover { color: #ef4444; }
+.level-controls { display: flex; gap: 5px; padding: 6px 8px; flex-shrink: 0; border-top: 1px solid var(--s800); }
+.sm-btn {
+  flex: 1; background: var(--s800); border: 1px solid var(--s700); border-radius: 5px;
+  color: var(--s400); font-family: 'DM Mono', monospace; font-size: 9px;
+  padding: 6px 4px; cursor: pointer; transition: all 0.1s; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.sm-btn:hover { border-color: var(--s500); color: var(--s200); }
+.sm-btn.primary { background: var(--accent); border-color: var(--accent-l); color: #fff; }
+.sm-btn.primary:hover { background: var(--accent-l); }
+
+/* ── CENTER CANVAS ──────────────────────────────────────── */
+#canvas-area {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative;
+}
+#canvas-toolbar {
+  display: flex; align-items: center; gap: 8px; padding: 8px 14px;
+  background: var(--s900); border-bottom: 1px solid var(--s800); flex-shrink: 0; flex-wrap: wrap;
+}
+#canvas-toolbar .toolbar-section { display: flex; gap: 4px; align-items: center; }
+.toolbar-sep { width: 1px; height: 20px; background: var(--s800); margin: 0 4px; }
+.tb-btn {
+  background: var(--s800); border: 1px solid var(--s700); border-radius: 5px;
+  color: var(--s400); font-family: 'DM Mono', monospace; font-size: 9px;
+  padding: 5px 9px; cursor: pointer; transition: all 0.1s; letter-spacing: 0.06em;
+  text-transform: uppercase; white-space: nowrap;
+}
+.tb-btn:hover { border-color: var(--s500); color: var(--s200); }
+.tb-btn.active { background: var(--accent); border-color: var(--accent-l); color: #fff; }
+.tb-btn.green { background: #14532d; border-color: #16a34a; color: var(--green); }
+.tb-btn.green:hover { background: #166534; }
+#level-name-input {
+  background: transparent; border: none; border-bottom: 1px solid var(--s700);
+  color: var(--s100); font-family: 'DM Serif Display', serif; font-style: italic;
+  font-size: 14px; outline: none; padding: 1px 4px; width: 160px;
+}
+#level-name-input:focus { border-bottom-color: var(--accent); }
+
+#canvas-wrap {
+  flex: 1; position: relative; overflow: hidden; cursor: crosshair;
+  background: #3d6b4a;
+}
+#designCanvas { display: block; width: 100%; height: 100%; }
+
+/* PIPE LABELS */
+.pipe-label {
+  position: absolute; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase;
+  pointer-events: none; padding: 2px 5px; border-radius: 3px;
+}
+
+/* ── RIGHT PANEL ──────────────────────────────────────── */
+#right-panel {
+  width: 220px; flex-shrink: 0; background: var(--s900);
+  border-left: 1px solid var(--s800); display: flex; flex-direction: column; overflow: hidden;
+}
+#right-panel .section-label { padding-top: 10px; }
+
+#layers-list {
+  flex: 1; overflow-y: auto; padding: 4px 6px;
+  scrollbar-width: thin; scrollbar-color: var(--s700) transparent;
+}
+.layer-item {
+  display: flex; align-items: center; padding: 5px 7px; border-radius: 5px; cursor: pointer;
+  gap: 6px; margin-bottom: 2px; transition: background 0.1s; font-size: 10px;
+}
+.layer-item:hover { background: var(--s800); }
+.layer-item.active { background: rgba(194,65,12,0.2); }
+.layer-icon { width: 16px; height: 16px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.layer-type { flex: 1; color: var(--s300); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.layer-eye { background: none; border: none; color: var(--s600); cursor: pointer; font-size: 12px; }
+.layer-eye:hover { color: var(--s300); }
+
+#json-wrap {
+  border-top: 1px solid var(--s800); flex-shrink: 0; display: flex; flex-direction: column;
+}
+#json-toggle {
+  padding: 7px 12px; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--s500); cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+  user-select: none;
+}
+#json-toggle:hover { color: var(--s300); }
+#json-area {
+  display: none; padding: 0 8px 8px; max-height: 220px;
+}
+#json-area.open { display: block; }
+#json-output {
+  background: var(--s900); border: 1px solid var(--s800); border-radius: 5px;
+  color: var(--green); font-size: 9px; line-height: 1.5; padding: 8px;
+  max-height: 180px; overflow-y: auto; white-space: pre; font-family: 'DM Mono', monospace;
+  scrollbar-width: thin; scrollbar-color: var(--s700) transparent;
+}
+
+/* ── GRID OVERLAY ──────────────────────────────────────── */
+.grid-on #designCanvas { cursor: crosshair; }
+
+/* ── HOVER CURSOR ──────────────────────────────────────── */
+.cursor-move { cursor: move !important; }
+.cursor-resize { cursor: nwse-resize !important; }
+
+/* ── TOOLTIPS ──────────────────────────────────────────── */
+[data-tip] { position: relative; }
+[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+  background: var(--s800); color: var(--s200); font-size: 9px; padding: 3px 7px;
+  border-radius: 4px; white-space: nowrap; pointer-events: none; z-index: 999;
+  border: 1px solid var(--s700);
+}
+
+/* ── MODALS / TOASTS ──────────────────────────────────────────── */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(60px);
+  background: var(--s800); border: 1px solid var(--s700); border-radius: 8px;
+  padding: 9px 18px; font-size: 11px; color: var(--s200); z-index: 9999;
+  transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1); pointer-events: none;
+}
+#toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ── PIPE CONNECTION VISUAL ──────────────────────────────── */
+#connecting-hint {
+  display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  background: rgba(34,211,238,0.15); border: 1px dashed var(--pipe-in);
+  border-radius: 8px; padding: 12px 20px; font-size: 12px; color: var(--pipe-in);
+  text-align: center; pointer-events: none; backdrop-filter: blur(4px);
+}
+
+/* scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--s700); border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ═══════════════════════ LEFT PANEL ═══════════════════════ -->
+<div id="left-panel">
+  <div id="panel-header">
+    <h1>Puck <em>Golf</em></h1>
+    <small>Level Designer</small>
+  </div>
+
+  <!-- TOOLS -->
+  <div class="panel-section">
+    <div class="section-label">Place Obstacles</div>
+    <div class="tool-grid">
+      <button class="tool-btn" id="tool-select" onclick="setTool('select')" data-tip="Select & move">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M5 3l14 9-7 2-2 7L5 3z"/></svg>
+        Select
+      </button>
+      <button class="tool-btn" id="tool-puck" onclick="setTool('puck')" data-tip="Place puck start">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>
+        Puck
+      </button>
+      <button class="tool-btn" id="tool-hole" onclick="setTool('hole')" data-tip="Place hole target">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 8v8M9 12h6" stroke-width="2"/></svg>
+        Hole
+      </button>
+      <button class="tool-btn" id="tool-rect" onclick="setTool('rect')" data-tip="Draw rectangle wall">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/></svg>
+        Rect
+      </button>
+      <button class="tool-btn" id="tool-circle" onclick="setTool('circle')" data-tip="Place circle obstacle">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>
+        Circle
+      </button>
+      <button class="tool-btn" id="tool-diagonal" onclick="setTool('diagonal')" data-tip="Draw diagonal wall">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="4" y1="20" x2="20" y2="4"/></svg>
+        Diagonal
+      </button>
+      <button class="tool-btn" id="tool-windmill" onclick="setTool('windmill')" data-tip="Place spinning windmill">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M12 10V4M14 12l5-3M12 14v6M10 12l-5 3"/></svg>
+        Windmill
+      </button>
+      <button class="tool-btn" id="tool-moving" onclick="setTool('moving')" data-tip="Moving block obstacle">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="2" y="9" width="8" height="6" rx="2"/><path d="M10 12h12M18 9l3 3-3 3"/></svg>
+        Mover
+      </button>
+      <button class="tool-btn" id="tool-orbit" onclick="setTool('orbit')" data-tip="Orbiting obstacle">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(-30 12 12)"/></svg>
+        Orbit
+      </button>
+      <button class="tool-btn" id="tool-pipe-in" onclick="setTool('pipe-in')" data-tip="Pipe entrance (teleport in)">
+        <svg width="16" height="16" fill="none" stroke="var(--pipe-in)" stroke-width="1.5" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="8" rx="3"/><path d="M12 8V4M12 16v4" stroke="var(--pipe-in)"/></svg>
+        Pipe In
+      </button>
+      <button class="tool-btn" id="tool-pipe-out" onclick="setTool('pipe-out')" data-tip="Pipe exit (teleport out)">
+        <svg width="16" height="16" fill="none" stroke="var(--pipe-out)" stroke-width="1.5" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="8" rx="3"/><path d="M9 12l3 3 3-3M12 15V4" stroke="var(--pipe-out)"/></svg>
+        Pipe Out
+      </button>
+      <button class="tool-btn" id="tool-link-pipe" onclick="setTool('link-pipe')" data-tip="Link a pipe-in to pipe-out">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 12h6M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0"/></svg>
+        Link
+      </button>
+    </div>
+  </div>
+
+  <!-- PROPERTIES -->
+  <div id="props-panel">
+    <div class="no-selection" id="props-empty">
+      Click an obstacle to edit its properties.<br>
+      Use the tools above to place new elements.
+    </div>
+    <div id="props-content" style="display:none;"></div>
+  </div>
+
+  <!-- LEVEL LIST -->
+  <div id="level-list-wrap">
+    <div class="section-label" style="padding-top:8px;">Levels</div>
+    <div id="level-list"></div>
+  </div>
+  <div class="level-controls">
+    <button class="sm-btn" onclick="addLevel()">+ Level</button>
+    <button class="sm-btn" onclick="duplicateLevel()">Dupe</button>
+    <button class="sm-btn primary" onclick="exportLevels()">Export JSON</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════ CANVAS AREA ═══════════════════════ -->
+<div id="canvas-area">
+  <div id="canvas-toolbar">
+    <div class="toolbar-section">
+      <span style="font-size:9px;color:var(--s500);letter-spacing:.08em;text-transform:uppercase;margin-right:4px;">Hole:</span>
+      <input id="level-name-input" type="text" value="Unnamed Hole" oninput="onNameChange(this.value)" placeholder="Hole name…">
+      <span style="font-size:9px;color:var(--s600);margin:0 4px;">Par:</span>
+      <input class="prop-input" type="number" id="par-input" value="3" min="1" max="10" style="width:42px;font-size:11px;" oninput="onParChange(this.value)">
+    </div>
+    <div class="toolbar-sep"></div>
+    <div class="toolbar-section">
+      <button class="tb-btn" id="grid-btn" onclick="toggleGrid()" data-tip="Toggle grid snap">Grid</button>
+      <button class="tb-btn" id="snap-btn" onclick="toggleSnap()" data-tip="Snap to grid">Snap</button>
+      <button class="tb-btn" onclick="clearLevel()" data-tip="Clear all obstacles">Clear</button>
+    </div>
+    <div class="toolbar-sep"></div>
+    <div class="toolbar-section">
+      <button class="tb-btn" onclick="undoAction()" data-tip="Undo (Ctrl+Z)">Undo</button>
+      <button class="tb-btn" onclick="redoAction()" data-tip="Redo (Ctrl+Y)">Redo</button>
+    </div>
+    <div class="toolbar-sep"></div>
+    <div class="toolbar-section">
+      <button class="tb-btn green" onclick="testLevel()" data-tip="Export & test in game">▶ Test Level</button>
+    </div>
+    <div class="toolbar-sep"></div>
+    <div class="toolbar-section" style="font-size:9px;color:var(--s600);letter-spacing:0.05em;">
+      [ ] to rotate · Shift+[ ] = 90°
+    </div>
+  </div>
+
+  <div id="canvas-wrap" id="canvas-wrap">
+    <canvas id="designCanvas"></canvas>
+    <div id="connecting-hint">Click a Pipe Out to link it to this Pipe In</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ RIGHT PANEL ═══════════════════════ -->
+<div id="right-panel">
+  <div class="section-label">Layers</div>
+  <div id="layers-list"></div>
+
+  <div id="json-wrap">
+    <div id="json-toggle" onclick="toggleJson()">
+      <span>Level JSON</span>
+      <span id="json-arrow">▲</span>
+    </div>
+    <div id="json-area">
+      <div id="json-output"></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- #app -->
+
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════
+let W = 0, H = 0;
+let activeTool = 'select';
+let showGrid = false, snapGrid = false;
+const GRID = 20;
+
+let levels = [createBlankLevel()];
+let currentLevelIdx = 0;
+
+let selectedId = null;
+let dragging = false, dragOffX = 0, dragOffY = 0;
+let rotateStartAngle = 0; // angle at start of rotate drag
+let rotateItemStartRot = 0; // item._rotation at start of rotate drag
+let drawStart = null, drawPreview = null;
+let pipeLinkSource = null; // pipe-in id waiting for pipe-out selection
+
+// Undo/redo
+let undoStack = [], redoStack = [];
+
+function currentLevel() { return levels[currentLevelIdx]; }
+function currentObstacles() { return currentLevel().obstacles; }
+
+function createBlankLevel() {
+  return {
+    name: 'New Hole',
+    par: 3,
+    puck: { x: 0.12, y: 0.5 },
+    hole: { x: 0.85, y: 0.5 },
+    obstacles: [],
+    moving: []
+  };
+}
+
+let nextId = 1000;
+function uid() { return ++nextId; }
+
+// ══════════════════════════════════════════════════════════════
+// CANVAS SETUP
+// ══════════════════════════════════════════════════════════════
+const canvas = document.getElementById('designCanvas');
+const ctx = canvas.getContext('2d');
+
+function resize() {
+  const wrap = document.getElementById('canvas-wrap');
+  W = wrap.clientWidth;
+  H = wrap.clientHeight;
+  canvas.width = W * devicePixelRatio;
+  canvas.height = H * devicePixelRatio;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  render();
+}
+window.addEventListener('resize', resize);
+
+// ══════════════════════════════════════════════════════════════
+// SNAP HELPER
+// ══════════════════════════════════════════════════════════════
+function snap(v) { return snapGrid ? Math.round(v / GRID) * GRID : v; }
+function snapPt(x, y) { return { x: snap(x), y: snap(y) }; }
+
+// ══════════════════════════════════════════════════════════════
+// COORDINATE NORMALIZATION
+// ══════════════════════════════════════════════════════════════
+function px2nx(x) { return x / W; }
+function px2ny(y) { return y / H; }
+function nx2px(x) { return x * W; }
+function ny2py(y) { return y * H; }
+function nMin(v) { return v / Math.min(W, H); }
+function minPx(v) { return v * Math.min(W, H); }
+
+// ══════════════════════════════════════════════════════════════
+// TOOL MANAGEMENT
+// ══════════════════════════════════════════════════════════════
+function setTool(tool) {
+  activeTool = tool;
+  pipeLinkSource = null;
+  document.getElementById('connecting-hint').style.display = 'none';
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('tool-' + tool);
+  if (btn) btn.classList.add('active');
+  canvas.style.cursor = tool === 'select' ? 'default' : 'crosshair';
+}
+
+// ══════════════════════════════════════════════════════════════
+// UNDO/REDO
+// ══════════════════════════════════════════════════════════════
+function saveUndo() {
+  undoStack.push(JSON.stringify(levels));
+  if (undoStack.length > 60) undoStack.shift();
+  redoStack = [];
+}
+
+function undoAction() {
+  if (!undoStack.length) return;
+  redoStack.push(JSON.stringify(levels));
+  levels = JSON.parse(undoStack.pop());
+  syncAll();
+  toast('Undo');
+}
+
+function redoAction() {
+  if (!redoStack.length) return;
+  undoStack.push(JSON.stringify(levels));
+  levels = JSON.parse(redoStack.pop());
+  syncAll();
+  toast('Redo');
+}
+
+function syncAll() {
+  renderLevelList();
+  updateJson();
+  render();
+  renderLayers();
+  if (selectedId) showProps(findById(selectedId));
+}
+
+// ══════════════════════════════════════════════════════════════
+// FIND OBSTACLE
+// ══════════════════════════════════════════════════════════════
+function allItems() {
+  const lvl = currentLevel();
+  const items = [];
+  if (lvl.obstacles) lvl.obstacles.forEach(o => items.push(o));
+  if (lvl.moving) lvl.moving.forEach(o => items.push(o));
+  return items;
+}
+
+function findById(id) {
+  return allItems().find(o => o._id === id) || null;
+}
+
+function removeById(id) {
+  const lvl = currentLevel();
+  lvl.obstacles = lvl.obstacles.filter(o => o._id !== id);
+  lvl.moving = lvl.moving.filter(o => o._id !== id);
+  // Also remove pipe links
+  lvl.obstacles.forEach(o => { if (o.linkedTo === id) delete o.linkedTo; });
+  lvl.moving.forEach(o => { if (o.linkedTo === id) delete o.linkedTo; });
+}
+
+// ══════════════════════════════════════════════════════════════
+// MOUSE INPUT
+// ══════════════════════════════════════════════════════════════
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const src = e.touches ? e.touches[0] : e;
+  return snapPt(src.clientX - rect.left, src.clientY - rect.top);
+}
+
+canvas.addEventListener('mousedown', onDown);
+canvas.addEventListener('mousemove', onMove);
+canvas.addEventListener('mouseup', onUp);
+
+function onDown(e) {
+  const pos = getPos(e);
+  const x = pos.x, y = pos.y;
+
+  if (activeTool === 'select') {
+    // Check for rotate handle first
+    if (selectedId) {
+      const sel = findById(selectedId);
+      if (sel && isOnRotateHandle(x, y, sel)) {
+        dragging = 'rotate';
+        const cx = getItemCenterX(sel), cy = getItemCenterY(sel);
+        rotateStartAngle = Math.atan2(y - cy, x - cx);
+        rotateItemStartRot = sel._rotation || 0;
+        saveUndo();
+        return;
+      }
+    }
+    // Check for resize handle
+    if (selectedId) {
+      const sel = findById(selectedId);
+      if (sel && isOnResizeHandle(x, y, sel)) {
+        dragging = 'resize';
+        dragOffX = x; dragOffY = y;
+        saveUndo();
+        return;
+      }
+    }
+    // Hit test
+    const hit = hitTest(x, y);
+    if (hit) {
+      selectedId = hit._id;
+      dragging = 'move';
+      dragOffX = x - getItemCenterX(hit);
+      dragOffY = y - getItemCenterY(hit);
+      saveUndo();
+      showProps(hit);
+      renderLayers();
+    } else {
+      selectedId = null;
+      dragging = false;
+      showProps(null);
+      renderLayers();
+    }
+    render();
+    return;
+  }
+
+  if (activeTool === 'puck') {
+    saveUndo();
+    currentLevel().puck = { x: px2nx(x), y: px2ny(y) };
+    updateJson(); render();
+    return;
+  }
+
+  if (activeTool === 'hole') {
+    saveUndo();
+    currentLevel().hole = { x: px2nx(x), y: px2ny(y) };
+    updateJson(); render();
+    return;
+  }
+
+  if (activeTool === 'link-pipe') {
+    const hit = hitTest(x, y);
+    if (hit && hit.type === 'pipe-in' && !pipeLinkSource) {
+      pipeLinkSource = hit._id;
+      selectedId = hit._id;
+      document.getElementById('connecting-hint').style.display = 'block';
+      toast('Now click a Pipe Out to connect');
+      render();
+      return;
+    }
+    if (hit && hit.type === 'pipe-out' && pipeLinkSource) {
+      saveUndo();
+      const src = findById(pipeLinkSource);
+      if (src) src.linkedTo = hit._id;
+      pipeLinkSource = null;
+      document.getElementById('connecting-hint').style.display = 'none';
+      toast('Pipe linked!');
+      updateJson(); render(); showProps(src);
+      return;
+    }
+    return;
+  }
+
+  // Drawing tools — start drag
+  drawStart = { x, y };
+  drawPreview = null;
+}
+
+function onMove(e) {
+  const pos = getPos(e);
+  const x = pos.x, y = pos.y;
+
+  // Update cursor
+  if (activeTool === 'select') {
+    if (selectedId) {
+      const sel = findById(selectedId);
+      if (sel && isOnRotateHandle(x, y, sel)) {
+        canvas.style.cursor = 'grab';
+      } else if (sel && isOnResizeHandle(x, y, sel)) {
+        canvas.style.cursor = 'nwse-resize';
+      } else if (hitTest(x, y)) {
+        canvas.style.cursor = 'move';
+      } else {
+        canvas.style.cursor = 'default';
+      }
+    }
+  }
+
+  if (dragging === 'rotate' && selectedId) {
+    const item = findById(selectedId);
+    if (!item) return;
+    const cx = getItemCenterX(item), cy = getItemCenterY(item);
+    const curAngle = Math.atan2(y - cy, x - cx);
+    let delta = curAngle - rotateStartAngle;
+    item._rotation = rotateItemStartRot + delta;
+    showProps(item);
+    updateJson(); render();
+    return;
+  }
+
+  if (dragging === 'move' && selectedId) {
+    const item = findById(selectedId);
+    if (!item) return;
+    const nx = snap(x - dragOffX);
+    const ny = snap(y - dragOffY);
+    moveItemTo(item, nx, ny);
+    showProps(item);
+    updateJson(); render(); renderLayers();
+    return;
+  }
+
+  if (dragging === 'resize' && selectedId) {
+    const item = findById(selectedId);
+    if (!item) return;
+    resizeItem(item, x, y);
+    dragOffX = x; dragOffY = y;
+    showProps(item);
+    updateJson(); render();
+    return;
+  }
+
+  if (drawStart && activeTool !== 'select' && activeTool !== 'puck' && activeTool !== 'hole') {
+    drawPreview = buildPreview(activeTool, drawStart, { x, y });
+    render();
+  }
+}
+
+function onUp(e) {
+  const pos = getPos(e);
+  const x = pos.x, y = pos.y;
+
+  if (dragging) { dragging = false; return; }
+
+  if (drawStart && activeTool !== 'select' && activeTool !== 'puck' && activeTool !== 'hole' && activeTool !== 'link-pipe') {
+    const item = buildPreview(activeTool, drawStart, { x, y }, true);
+    if (item) {
+      saveUndo();
+      item._id = uid();
+      const lvl = currentLevel();
+      const isMoving = ['moving', 'orbit', 'windmill'].includes(activeTool);
+      if (isMoving) lvl.moving.push(item);
+      else lvl.obstacles.push(item);
+      selectedId = item._id;
+      showProps(item);
+      updateJson(); renderLayers(); render();
+      toast('Added ' + item.type);
+    }
+    drawStart = null; drawPreview = null;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// BUILD PREVIEW / ITEM
+// ══════════════════════════════════════════════════════════════
+function buildPreview(tool, start, end, finalize = false) {
+  const sx = start.x, sy = start.y;
+  const ex = snap(end.x), ey = snap(end.y);
+  const minSize = 8;
+
+  if (tool === 'rect') {
+    const x = Math.min(sx, ex), y = Math.min(sy, ey);
+    const w = Math.abs(ex - sx), h = Math.abs(ey - sy);
+    if (finalize && (w < minSize || h < minSize)) return null;
+    return { type: 'rect', x: px2nx(x), y: px2ny(y), w: px2nx(w), h: px2ny(h) };
+  }
+
+  if (tool === 'circle') {
+    const r = Math.hypot(ex - sx, ey - sy);
+    if (finalize && r < minSize) return null;
+    return { type: 'circle', x: px2nx(sx), y: px2ny(sy), r: nMin(r) };
+  }
+
+  if (tool === 'diagonal') {
+    const dist = Math.hypot(ex - sx, ey - sy);
+    if (finalize && dist < minSize) return null;
+    return { type: 'diagonal', x1: px2nx(sx), y1: px2ny(sy), x2: px2nx(ex), y2: px2ny(ey), thickness: 0.025 };
+  }
+
+  if (tool === 'windmill') {
+    return { type: 'windmill', x: px2nx(sx), y: px2ny(sy), blades: 4, length: 0.15, width: 0.022, speed: 1.5 };
+  }
+
+  if (tool === 'moving') {
+    const x = Math.min(sx, ex), y = Math.min(sy, ey);
+    const w = Math.abs(ex - sx), h = Math.abs(ey - sy);
+    if (finalize && (w < minSize || h < minSize)) return null;
+    return { type: 'rect', x: px2nx(x), y: px2ny(y), w: px2nx(Math.max(w, 0.04)), h: px2ny(Math.max(h, 0.04)), axis: 'x', range: 0.3, speed: 1.2, _moving: true };
+  }
+
+  if (tool === 'orbit') {
+    const r = Math.hypot(ex - sx, ey - sy);
+    return { type: 'orbit', shape: 'circle', x: px2nx(sx), y: px2ny(sy), r: 0.035, orbitR: nMin(Math.max(r, 20)), orbitSpeed: 1.5, orbitPhase: 0 };
+  }
+
+  if (tool === 'pipe-in') {
+    return { type: 'pipe-in', x: px2nx(sx), y: px2ny(sy), r: 0.04, linkedTo: null };
+  }
+
+  if (tool === 'pipe-out') {
+    return { type: 'pipe-out', x: px2nx(sx), y: px2ny(sy), r: 0.04 };
+  }
+
+  return null;
+}
+
+// ══════════════════════════════════════════════════════════════
+// ITEM CENTER / MOVE / RESIZE
+// ══════════════════════════════════════════════════════════════
+function getItemCenterX(item) {
+  if (item.type === 'rect') return nx2px(item.x) + nx2px(item.w) / 2;
+  if (item.x !== undefined) return nx2px(item.x);
+  if (item.x1 !== undefined) return nx2px((item.x1 + item.x2) / 2);
+  return 0;
+}
+function getItemCenterY(item) {
+  if (item.type === 'rect') return ny2py(item.y) + ny2py(item.h) / 2;
+  if (item.y !== undefined) return ny2py(item.y);
+  if (item.y1 !== undefined) return ny2py((item.y1 + item.y2) / 2);
+  return 0;
+}
+
+function moveItemTo(item, cx, cy) {
+  const t = item.type;
+  if (t === 'rect') {
+    item.x = px2nx(cx - nx2px(item.w) / 2);
+    item.y = px2ny(cy - ny2py(item.h) / 2);
+  } else if (t === 'diagonal') {
+    const hw = nx2px((item.x2 - item.x1)) / 2;
+    const hh = ny2py((item.y2 - item.y1)) / 2;
+    item.x1 = px2nx(cx - hw); item.y1 = px2ny(cy - hh);
+    item.x2 = px2nx(cx + hw); item.y2 = px2ny(cy + hh);
+  } else {
+    item.x = px2nx(cx);
+    item.y = px2ny(cy);
+  }
+}
+
+function isOnResizeHandle(x, y, item) {
+  const corners = getResizeHandles(item);
+  return corners.some(h => Math.hypot(x - h.x, y - h.y) < 8);
+}
+
+function getResizeHandles(item) {
+  const t = item.type;
+  if (t === 'rect') {
+    const px = nx2px(item.x), py = ny2py(item.y);
+    const pw = nx2px(item.w), ph = ny2py(item.h);
+    return [{ x: px + pw, y: py + ph }]; // bottom-right
+  }
+  if (t === 'diagonal') {
+    return [
+      { x: nx2px(item.x1), y: ny2py(item.y1) },
+      { x: nx2px(item.x2), y: ny2py(item.y2) }
+    ];
+  }
+  if (t === 'circle' || t === 'pipe-in' || t === 'pipe-out') {
+    const cx = nx2px(item.x), cy = ny2py(item.y);
+    const r = minPx(item.r);
+    return [{ x: cx + r, y: cy }];
+  }
+  return [];
+}
+
+function getRotateHandle(item) {
+  const cx = getItemCenterX(item);
+  const cy = getItemCenterY(item);
+  const rot = item._rotation || 0;
+  // Handle is always 36px above the item center, rotated with the item
+  const dist = getItemHalfHeight(item) + 28;
+  return {
+    x: cx + Math.sin(rot) * (-dist),
+    y: cy - Math.cos(rot) * dist
+  };
+}
+
+function getItemHalfHeight(item) {
+  const t = item.type;
+  if (t === 'rect') return ny2py(item.h || 0.05) / 2;
+  if (t === 'circle' || t === 'pipe-in' || t === 'pipe-out') return minPx(item.r || 0.04);
+  if (t === 'windmill') return minPx(item.length || 0.15);
+  if (t === 'orbit') return minPx(item.orbitR || 0.15);
+  if (t === 'diagonal') return Math.hypot(nx2px(item.x2-item.x1), ny2py(item.y2-item.y1)) / 2;
+  return 20;
+}
+
+function isOnRotateHandle(x, y, item) {
+  // circles & diagonals don't need a rotation handle (circles are symmetric; diagonals use endpoints)
+  if (item.type === 'circle' || item.type === 'diagonal') return false;
+  const h = getRotateHandle(item);
+  return Math.hypot(x - h.x, y - h.y) < 9;
+}
+
+function resizeItem(item, mx, my) {
+  const t = item.type;
+  if (t === 'rect') {
+    const px = nx2px(item.x), py = ny2py(item.y);
+    item.w = Math.max(px2nx(snap(mx) - px), 0.01);
+    item.h = Math.max(px2ny(snap(my) - py), 0.01);
+  }
+  if (t === 'circle' || t === 'pipe-in' || t === 'pipe-out') {
+    const cx = nx2px(item.x), cy = ny2py(item.y);
+    item.r = Math.max(nMin(Math.hypot(mx - cx, my - cy)), 0.01);
+  }
+  if (t === 'diagonal') {
+    // Resize second endpoint
+    item.x2 = px2nx(snap(mx));
+    item.y2 = px2ny(snap(my));
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// HIT TEST
+// ══════════════════════════════════════════════════════════════
+function hitTest(x, y) {
+  const items = allItems().slice().reverse();
+  for (const item of items) {
+    if (hitItem(item, x, y)) return item;
+  }
+  return null;
+}
+
+function hitItem(item, x, y) {
+  const t = item.type;
+  if (t === 'rect' || (t === 'rect' && item._moving)) {
+    const px = nx2px(item.x), py = ny2py(item.y);
+    const pw = nx2px(item.w), ph = ny2py(item.h);
+    const rot = item._rotation || 0;
+    if (rot) {
+      // Transform test point into rect local space
+      const cx = px + pw/2, cy = py + ph/2;
+      const cos = Math.cos(-rot), sin = Math.sin(-rot);
+      const lx = cos*(x-cx) - sin*(y-cy) + cx;
+      const ly = sin*(x-cx) + cos*(y-cy) + cy;
+      return lx >= px && lx <= px+pw && ly >= py && ly <= py+ph;
+    }
+    return x >= px && x <= px + pw && y >= py && y <= py + ph;
+  }
+  if (t === 'circle' || t === 'windmill' || t === 'orbit' || t === 'pipe-in' || t === 'pipe-out') {
+    const cx = nx2px(item.x), cy = ny2py(item.y);
+    const r = t === 'windmill' ? minPx(0.06) : t === 'orbit' ? minPx(0.05) : minPx(item.r);
+    return Math.hypot(x - cx, y - cy) < r + 6;
+  }
+  if (t === 'diagonal') {
+    const x1 = nx2px(item.x1), y1 = ny2py(item.y1);
+    const x2 = nx2px(item.x2), y2 = ny2py(item.y2);
+    const abx = x2 - x1, aby = y2 - y1;
+    const lenSq = abx * abx + aby * aby;
+    if (lenSq < 0.001) return Math.hypot(x - x1, y - y1) < 10;
+    const t2 = Math.max(0, Math.min(1, ((x - x1) * abx + (y - y1) * aby) / lenSq));
+    const nearX = x1 + t2 * abx, nearY = y1 + t2 * aby;
+    return Math.hypot(x - nearX, y - nearY) < minPx(item.thickness) + 5;
+  }
+  return false;
+}
+
+// ══════════════════════════════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════════════════════════════
+let animFrame = 0;
+function render() {
+  ctx.clearRect(0, 0, W, H);
+  drawBackground();
+  if (showGrid) drawGridLines();
+  drawStaticObstacles();
+  drawMovingObstacles();
+  drawPipes();
+  drawPipeConnections();
+  drawHole();
+  drawPuck();
+  if (drawPreview) drawObstaclePreview(drawPreview);
+  if (selectedId) drawSelection();
+}
+
+function drawBackground() {
+  ctx.fillStyle = '#3d6b4a';
+  ctx.fillRect(0, 0, W, H);
+  // Texture
+  ctx.save(); ctx.globalAlpha = 0.04;
+  for (let i = 0; i < W; i += 4) for (let j = 0; j < H; j += 4) {
+    ctx.fillStyle = ((i * 7 + j * 13) % 255) > 127 ? '#fff' : '#000';
+    ctx.fillRect(i, j, 2, 2);
+  }
+  ctx.restore();
+  // Vignette
+  const vg = ctx.createRadialGradient(W/2, H/2, Math.min(W,H)*.1, W/2, H/2, Math.max(W,H)*.8);
+  vg.addColorStop(0, 'rgba(255,255,255,0.04)');
+  vg.addColorStop(1, 'rgba(0,0,0,0.25)');
+  ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+}
+
+function drawGridLines() {
+  ctx.save(); ctx.globalAlpha = 0.12;
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.5;
+  for (let x = 0; x <= W; x += GRID) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = 0; y <= H; y += GRID) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  ctx.restore();
+}
+
+function drawStaticObstacles() {
+  const items = currentLevel().obstacles || [];
+  items.forEach(item => {
+    if (item.type === 'pipe-in' || item.type === 'pipe-out') return;
+    drawStaticItem(item, item._id === selectedId);
+  });
+}
+
+function drawMovingObstacles() {
+  const items = currentLevel().moving || [];
+  items.forEach(item => drawMovingItem(item, item._id === selectedId));
+}
+
+function drawPipes() {
+  const items = currentLevel().obstacles || [];
+  items.forEach(item => {
+    if (item.type !== 'pipe-in' && item.type !== 'pipe-out') return;
+    drawPipeItem(item, item._id === selectedId);
+  });
+}
+
+function drawPipeConnections() {
+  const items = currentLevel().obstacles || [];
+  const pipeIns = items.filter(o => o.type === 'pipe-in' && o.linkedTo);
+  pipeIns.forEach(pIn => {
+    const pOut = items.find(o => o._id === pIn.linkedTo);
+    if (!pOut) return;
+    const ax = nx2px(pIn.x), ay = ny2py(pIn.y);
+    const bx = nx2px(pOut.x), by = ny2py(pOut.y);
+    ctx.save();
+    ctx.setLineDash([5, 8]);
+    ctx.strokeStyle = 'rgba(167,139,250,0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    // Bezier curve
+    const mx = (ax + bx) / 2, my = (ay + by) / 2;
+    ctx.quadraticCurveTo(mx, my - 30, bx, by);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  });
+}
+
+function drawStaticItem(item, selected = false) {
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 8;
+
+  if (item.type === 'rect') {
+    const px = nx2px(item.x), py = ny2py(item.y);
+    const pw = nx2px(item.w), ph = ny2py(item.h);
+    const rot = item._rotation || 0;
+    if (rot) {
+      const cx = px + pw/2, cy = py + ph/2;
+      ctx.translate(cx, cy); ctx.rotate(rot); ctx.translate(-cx, -cy);
+    }
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(px, py, pw, ph, 5); else ctx.rect(px, py, pw, ph);
+    const g = ctx.createLinearGradient(px, py, px, py + ph);
+    g.addColorStop(0, '#4a4745'); g.addColorStop(1, '#2c2a28');
+    ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = selected ? '#f97316' : 'rgba(255,255,255,0.1)';
+    ctx.lineWidth = selected ? 2 : 1; ctx.stroke();
+  }
+
+  if (item.type === 'circle') {
+    const cx = nx2px(item.x), cy = ny2py(item.y), cr = minPx(item.r);
+    ctx.beginPath(); ctx.arc(cx, cy, cr, 0, Math.PI * 2);
+    const g = ctx.createRadialGradient(cx - cr * .3, cy - cr * .3, cr * .1, cx, cy, cr);
+    g.addColorStop(0, '#5a5755'); g.addColorStop(1, '#2c2a28');
+    ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = selected ? '#f97316' : 'rgba(255,255,255,0.1)';
+    ctx.lineWidth = selected ? 2 : 1.5; ctx.stroke();
+  }
+
+  if (item.type === 'diagonal') {
+    const x1 = nx2px(item.x1), y1 = ny2py(item.y1);
+    const x2 = nx2px(item.x2), y2 = ny2py(item.y2);
+    const thick = minPx(item.thickness);
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+    ctx.strokeStyle = '#2c2a28'; ctx.lineWidth = thick * 2 + 4; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+    const g = ctx.createLinearGradient(x1, y1, x2, y2);
+    g.addColorStop(0, '#5a5755'); g.addColorStop(.5, '#4a4745'); g.addColorStop(1, '#3a3735');
+    ctx.strokeStyle = g; ctx.lineWidth = thick * 2; ctx.stroke();
+    if (selected) {
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+      ctx.strokeStyle = 'rgba(249,115,22,0.6)'; ctx.lineWidth = 2; ctx.stroke();
+    }
+    // Endpoint handles
+    if (selected) {
+      [[x1,y1],[x2,y2]].forEach(([hx,hy]) => {
+        ctx.beginPath(); ctx.arc(hx, hy, 6, 0, Math.PI*2);
+        ctx.fillStyle = '#f97316'; ctx.fill();
+      });
+    }
+  }
+
+  ctx.restore();
+}
+
+function drawMovingItem(item, selected = false) {
+  ctx.save();
+  ctx.shadowColor = `rgba(194,65,12,0.4)`; ctx.shadowBlur = 12;
+
+  if (item.type === 'rect' && item._moving) {
+    const px = nx2px(item.x), py = ny2py(item.y);
+    const pw = nx2px(item.w || 0.08), ph = ny2py(item.h || 0.06);
+    const rot = item._rotation || 0;
+    if (rot) {
+      const cx2 = px + pw/2, cy2 = py + ph/2;
+      ctx.translate(cx2, cy2); ctx.rotate(rot); ctx.translate(-cx2, -cy2);
+    }
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(px, py, pw, ph, 5); else ctx.rect(px, py, pw, ph);
+    const g = ctx.createLinearGradient(px, py, px + pw, py + ph);
+    g.addColorStop(0, '#7a6354'); g.addColorStop(1, '#4a3728');
+    ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = selected ? '#f97316' : 'rgba(200,140,100,0.3)';
+    ctx.lineWidth = selected ? 2 : 1; ctx.stroke();
+    // Movement indicator (skip if rotated for clarity)
+    if (!rot) {
+      if (item.axis === 'x') {
+        const range = (item.range || 0.3) * W / 2;
+        ctx.save(); ctx.globalAlpha = 0.3;
+        ctx.setLineDash([4, 6]);
+        ctx.strokeStyle = '#f97316'; ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(px - range, py + ph/2);
+        ctx.lineTo(px + pw + range, py + ph/2);
+        ctx.stroke(); ctx.setLineDash([]);
+        ctx.restore();
+      } else {
+        const range = (item.range || 0.3) * H / 2;
+        ctx.save(); ctx.globalAlpha = 0.3;
+        ctx.setLineDash([4, 6]);
+        ctx.strokeStyle = '#f97316'; ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(px + pw/2, py - range);
+        ctx.lineTo(px + pw/2, py + ph + range);
+        ctx.stroke(); ctx.setLineDash([]);
+        ctx.restore();
+      }
+    }
+  }
+
+  if (item.type === 'windmill') {
+    const cx = nx2px(item.x), cy = ny2py(item.y);
+    const len = minPx(item.length || 0.15);
+    const wid = minPx(item.width || 0.022);
+    const blades = item.blades || 4;
+    const angle = item._previewAngle || 0;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(angle);
+    for (let b = 0; b < blades; b++) {
+      ctx.save();
+      ctx.rotate((b / blades) * Math.PI * 2);
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(wid * 0.8, -wid / 2, len - wid, wid, wid / 2);
+      else ctx.rect(wid * 0.8, -wid / 2, len - wid, wid);
+      const g = ctx.createLinearGradient(0, 0, len, 0);
+      g.addColorStop(0, '#8a7364'); g.addColorStop(1, '#4a3728');
+      ctx.fillStyle = g; ctx.fill();
+      ctx.strokeStyle = selected ? 'rgba(249,115,22,0.7)' : 'rgba(200,140,100,0.4)';
+      ctx.lineWidth = 1; ctx.stroke();
+      ctx.restore();
+    }
+    ctx.beginPath(); ctx.arc(0, 0, wid * 1.4, 0, Math.PI * 2);
+    const hg = ctx.createRadialGradient(-wid*.4, -wid*.4, 1, 0, 0, wid*1.4);
+    hg.addColorStop(0, '#9a8374'); hg.addColorStop(1, '#3a2a1f');
+    ctx.fillStyle = hg; ctx.fill();
+    ctx.strokeStyle = selected ? '#f97316' : 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = selected ? 2 : 1.5; ctx.stroke();
+    ctx.restore();
+  }
+
+  if (item.type === 'orbit') {
+    const cx = nx2px(item.x), cy = ny2py(item.y);
+    const orbitR = minPx(item.orbitR || 0.15);
+    const r = minPx(item.r || 0.035);
+    // Orbit ring
+    ctx.save(); ctx.globalAlpha = 0.2;
+    ctx.setLineDash([3, 7]);
+    ctx.strokeStyle = 'rgba(200,140,100,0.5)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(cx, cy, orbitR, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+    // Body at preview position
+    const px = cx + orbitR;
+    ctx.beginPath(); ctx.arc(px, cy, r, 0, Math.PI * 2);
+    const g = ctx.createRadialGradient(px - r*.3, cy - r*.3, r*.1, px, cy, r);
+    g.addColorStop(0, '#8a7364'); g.addColorStop(1, '#4a3728');
+    ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = selected ? '#f97316' : 'rgba(200,140,100,0.3)';
+    ctx.lineWidth = selected ? 2 : 1.5; ctx.stroke();
+    // Center dot
+    ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(200,140,100,0.4)'; ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+function drawPipeItem(item, selected = false) {
+  const cx = nx2px(item.x), cy = ny2py(item.y);
+  const r = minPx(item.r || 0.04);
+  const isIn = item.type === 'pipe-in';
+  const col = isIn ? '#22d3ee' : '#a78bfa';
+  const col2 = isIn ? '#0891b2' : '#7c3aed';
+  const rot = item._rotation || 0;
+
+  ctx.save();
+  if (rot) { ctx.translate(cx, cy); ctx.rotate(rot); ctx.translate(-cx, -cy); }
+  ctx.shadowColor = col; ctx.shadowBlur = selected ? 18 : 10;
+
+  // Outer ring
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  const g = ctx.createRadialGradient(cx - r*.3, cy - r*.3, r*.1, cx, cy, r);
+  g.addColorStop(0, col); g.addColorStop(1, col2);
+  ctx.fillStyle = g; ctx.fill();
+  ctx.strokeStyle = selected ? '#fff' : 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = selected ? 2 : 1; ctx.stroke();
+
+  // Inner symbol
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+  if (isIn) {
+    // Arrow pointing in (downward)
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - r*.4);
+    ctx.lineTo(cx, cy + r*.4);
+    ctx.moveTo(cx - r*.3, cy + r*.1);
+    ctx.lineTo(cx, cy + r*.4);
+    ctx.lineTo(cx + r*.3, cy + r*.1);
+    ctx.stroke();
+  } else {
+    // Arrow pointing out (upward)
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + r*.4);
+    ctx.lineTo(cx, cy - r*.4);
+    ctx.moveTo(cx - r*.3, cy - r*.1);
+    ctx.lineTo(cx, cy - r*.4);
+    ctx.lineTo(cx + r*.3, cy - r*.1);
+    ctx.stroke();
+  }
+
+  // Label
+  ctx.font = `bold ${Math.max(8, r*.5)}px DM Mono`;
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.globalAlpha = 0.7;
+  ctx.fillText(isIn ? 'IN' : 'OUT', cx, cy + r * 1.7);
+  ctx.restore();
+}
+
+function drawObstaclePreview(item) {
+  ctx.save(); ctx.globalAlpha = 0.55;
+  if (item.type === 'rect') drawStaticItem(item);
+  else if (item.type === 'circle') drawStaticItem(item);
+  else if (item.type === 'diagonal') drawStaticItem(item);
+  else if (item.type === 'windmill') drawMovingItem(item);
+  else if (item.type === 'orbit') drawMovingItem(item);
+  else if (item.type === 'pipe-in' || item.type === 'pipe-out') drawPipeItem(item);
+  else if (item._moving) drawMovingItem(item);
+  ctx.restore();
+}
+
+function drawSelection() {
+  const item = findById(selectedId);
+  if (!item) return;
+
+  // Draw resize handles
+  const handles = getResizeHandles(item);
+  handles.forEach(h => {
+    // Rotate handle positions with item rotation
+    let hx = h.x, hy = h.y;
+    if (item._rotation && item.type === 'rect') {
+      const cx = getItemCenterX(item), cy = getItemCenterY(item);
+      const cos = Math.cos(item._rotation), sin = Math.sin(item._rotation);
+      const dx = hx - cx, dy = hy - cy;
+      hx = cx + dx*cos - dy*sin;
+      hy = cy + dx*sin + dy*cos;
+    }
+    ctx.save();
+    ctx.beginPath(); ctx.arc(hx, hy, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#f97316';
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.fill(); ctx.stroke();
+    ctx.restore();
+  });
+
+  // Draw rotate handle (not for circles or diagonals)
+  if (item.type !== 'circle' && item.type !== 'diagonal') {
+    const rh = getRotateHandle(item);
+    const cx = getItemCenterX(item), cy = getItemCenterY(item);
+    // Line from center-top to handle
+    ctx.save();
+    ctx.setLineDash([3, 4]);
+    ctx.strokeStyle = 'rgba(250,204,21,0.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(rh.x, rh.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Handle circle
+    ctx.beginPath(); ctx.arc(rh.x, rh.y, 7, 0, Math.PI * 2);
+    ctx.fillStyle = '#facc15';
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.fill(); ctx.stroke();
+    // Rotation arc symbol inside
+    ctx.save();
+    ctx.translate(rh.x, rh.y);
+    ctx.strokeStyle = '#1c1917'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(0, 0, 3, -Math.PI*.7, Math.PI*.7);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(2.5, -3.5); ctx.lineTo(3, -1.5); ctx.lineTo(1, -2.5);
+    ctx.fillStyle = '#1c1917'; ctx.fill();
+    ctx.restore();
+    ctx.restore();
+  }
+}
+
+function drawHole() {
+  const lvl = currentLevel();
+  const hx = nx2px(lvl.hole.x), hy = ny2py(lvl.hole.y);
+  const puckR = Math.min(W, H) * 0.0285;
+  const hr = puckR * 1.15;
+  ctx.save();
+  const grd = ctx.createRadialGradient(hx, hy, 0, hx, hy, hr * 2.5);
+  grd.addColorStop(0, 'rgba(0,0,0,0.6)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(hx, hy, hr * 2.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(hx, hy, hr, 0, Math.PI * 2);
+  ctx.fillStyle = '#111'; ctx.fill();
+  ctx.strokeStyle = activeTool === 'hole' ? '#facc15' : 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = activeTool === 'hole' ? 2 : 1.5; ctx.stroke();
+  const px = hx + hr * .5;
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(px, hy); ctx.lineTo(px, hy - hr * 3.5); ctx.stroke();
+  ctx.fillStyle = '#dc2626';
+  ctx.beginPath(); ctx.moveTo(px, hy - hr * 3.5); ctx.lineTo(px + hr * 1.6, hy - hr * 2.8); ctx.lineTo(px, hy - hr * 2.1); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+function drawPuck() {
+  const lvl = currentLevel();
+  const px = nx2px(lvl.puck.x), py = ny2py(lvl.puck.y);
+  const r = Math.min(W, H) * 0.0285;
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 3;
+  const g = ctx.createRadialGradient(px - r*.3, py - r*.3, r*.1, px, py, r);
+  g.addColorStop(0, '#f0eae2'); g.addColorStop(.6, '#d4cdc5'); g.addColorStop(1, '#a09890');
+  ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
+  ctx.strokeStyle = activeTool === 'puck' ? '#facc15' : 'rgba(255,255,255,0.4)';
+  ctx.lineWidth = activeTool === 'puck' ? 2 : 1.5; ctx.stroke();
+  ctx.beginPath(); ctx.arc(px, py, r * .15, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fill();
+  ctx.restore();
+}
+
+// Windmill animation in designer
+function animateDesigner() {
+  const items = currentLevel().moving || [];
+  items.forEach(item => {
+    if (item.type === 'windmill') {
+      item._previewAngle = (item._previewAngle || 0) + (item.speed || 1.5) * 0.016;
+    }
+  });
+  render();
+  requestAnimationFrame(animateDesigner);
+}
+
+// ══════════════════════════════════════════════════════════════
+// PROPERTIES PANEL
+// ══════════════════════════════════════════════════════════════
+function showProps(item) {
+  const empty = document.getElementById('props-empty');
+  const content = document.getElementById('props-content');
+  if (!item) {
+    empty.style.display = 'block';
+    content.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  content.style.display = 'block';
+  content.innerHTML = buildPropsHTML(item);
+}
+
+function rotRow(item) {
+  const deg = Math.round(((item._rotation || 0) * 180 / Math.PI + 3600) % 360);
+  return `
+  <div style="margin-top:6px;border-top:1px solid var(--s800);padding-top:7px;">
+    <div class="prop-row" style="align-items:center;">
+      <label style="width:36px;">Rot°</label>
+      <input class="prop-input" type="range" min="-3.1416" max="3.1416" step="0.01"
+        value="${+(item._rotation||0).toFixed(4)}"
+        oninput="setRotDeg(${item._id},+this.value);document.getElementById('rv_${item._id}').textContent=Math.round(this.value*180/Math.PI)+'°'">
+      <span class="prop-val" id="rv_${item._id}">${deg}°</span>
+    </div>
+    <div style="display:flex;gap:4px;margin-top:4px;">
+      <button class="act-btn" style="font-size:9px;" onclick="snapRot(${item._id},-90)">-90°</button>
+      <button class="act-btn" style="font-size:9px;" onclick="snapRot(${item._id},-45)">-45°</button>
+      <button class="act-btn" style="font-size:9px;" onclick="snapRot(${item._id},0)">Reset</button>
+      <button class="act-btn" style="font-size:9px;" onclick="snapRot(${item._id},45)">45°</button>
+      <button class="act-btn" style="font-size:9px;" onclick="snapRot(${item._id},90)">90°</button>
+    </div>
+  </div>`;
+}
+
+window.setRotDeg = function(id, rad) {
+  const item = findById(id);
+  if (!item) return;
+  item._rotation = rad;
+  render(); updateJson();
+};
+
+window.snapRot = function(id, deg) {
+  const item = findById(id);
+  if (!item) return;
+  saveUndo();
+  item._rotation = deg * Math.PI / 180;
+  showProps(item);
+  render(); updateJson();
+};
+
+function buildPropsHTML(item) {
+  const t = item.type;
+  let html = `<div class="prop-heading">${typeLabel(t)}</div>`;
+
+  function row(label, key, type, min, max, step, extra='') {
+    const val = item[key] !== undefined ? item[key] : '';
+    if (type === 'range') {
+      return `<div class="prop-row">
+        <label>${label}</label>
+        <input class="prop-input" type="range" min="${min}" max="${max}" step="${step || 0.01}" value="${+val.toFixed(4)}" oninput="setProp(${item._id},'${key}',+this.value);document.getElementById('pv_${key}').textContent=this.value" ${extra}>
+        <span class="prop-val" id="pv_${key}">${+val.toFixed(3)}</span>
+      </div>`;
+    }
+    if (type === 'select') {
+      return `<div class="prop-row"><label>${label}</label>
+        <select class="prop-input" onchange="setProp(${item._id},'${key}',this.value)">${extra.map(o=>`<option value="${o}" ${val==o?'selected':''}>${o}</option>`).join('')}</select></div>`;
+    }
+    return `<div class="prop-row"><label>${label}</label>
+      <input class="prop-input" type="${type||'number'}" value="${val}" step="${step||0.01}" min="${min||''}" max="${max||''}" oninput="setProp(${item._id},'${key}',${type==='text'?'this.value':'+this.value'})"></div>`;
+  }
+
+  if (t === 'rect') {
+    html += row('X', 'x', 'range', 0, 1, 0.005);
+    html += row('Y', 'y', 'range', 0, 1, 0.005);
+    html += row('W', 'w', 'range', 0.01, 1, 0.005);
+    html += row('H', 'h', 'range', 0.01, 1, 0.005);
+    html += rotRow(item);
+  }
+
+  if (t === 'circle') {
+    html += row('X', 'x', 'range', 0, 1, 0.005);
+    html += row('Y', 'y', 'range', 0, 1, 0.005);
+    html += row('R', 'r', 'range', 0.01, 0.3, 0.005);
+  }
+
+  if (t === 'diagonal') {
+    html += row('X1', 'x1', 'range', 0, 1, 0.005);
+    html += row('Y1', 'y1', 'range', 0, 1, 0.005);
+    html += row('X2', 'x2', 'range', 0, 1, 0.005);
+    html += row('Y2', 'y2', 'range', 0, 1, 0.005);
+    html += row('Thick', 'thickness', 'range', 0.005, 0.1, 0.002);
+  }
+
+  if (t === 'windmill') {
+    html += row('X', 'x', 'range', 0, 1, 0.005);
+    html += row('Y', 'y', 'range', 0, 1, 0.005);
+    html += row('Blades', 'blades', 'range', 2, 8, 1);
+    html += row('Len', 'length', 'range', 0.05, 0.4, 0.005);
+    html += row('Width', 'width', 'range', 0.008, 0.06, 0.002);
+    html += row('Speed', 'speed', 'range', 0.2, 5, 0.1);
+    html += rotRow(item);
+  }
+
+  if (t === 'rect' && item._moving) {
+    html = `<div class="prop-heading">Moving Block</div>`;
+    html += row('X', 'x', 'range', 0, 1, 0.005);
+    html += row('Y', 'y', 'range', 0, 1, 0.005);
+    html += row('W', 'w', 'range', 0.01, 0.5, 0.005);
+    html += row('H', 'h', 'range', 0.01, 0.5, 0.005);
+    html += row('Axis', 'axis', 'select', '', '', '', ['x', 'y']);
+    html += row('Range', 'range', 'range', 0.05, 0.9, 0.01);
+    html += row('Speed', 'speed', 'range', 0.1, 5, 0.1);
+    html += rotRow(item);
+  }
+
+  if (t === 'orbit') {
+    html += row('X', 'x', 'range', 0, 1, 0.005);
+    html += row('Y', 'y', 'range', 0, 1, 0.005);
+    html += row('Shape', 'shape', 'select', '', '', '', ['circle', 'rect']);
+    html += row('R / W', 'r', 'range', 0.01, 0.15, 0.005);
+    html += row('Orbit R', 'orbitR', 'range', 0.05, 0.5, 0.005);
+    html += row('Speed', 'orbitSpeed', 'range', -5, 5, 0.1);
+    html += row('Phase', 'orbitPhase', 'range', 0, 6.28, 0.1);
+  }
+
+  if (t === 'pipe-in' || t === 'pipe-out') {
+    html += row('X', 'x', 'range', 0, 1, 0.005);
+    html += row('Y', 'y', 'range', 0, 1, 0.005);
+    html += row('Size', 'r', 'range', 0.02, 0.1, 0.005);
+    html += rotRow(item);
+    if (t === 'pipe-in' && item.linkedTo) {
+      html += `<div style="font-size:10px;color:#a78bfa;margin-top:6px;">✓ Linked to pipe out #${item.linkedTo}</div>`;
+    }
+    if (t === 'pipe-in' && !item.linkedTo) {
+      html += `<div style="font-size:10px;color:var(--s600);margin-top:6px;">Not linked. Use Link tool.</div>`;
+    }
+  }
+
+  html += `<div class="item-actions">
+    <button class="act-btn" onclick="duplicateItem(${item._id})">Dupe</button>
+    <button class="act-btn danger" onclick="deleteItem(${item._id})">Delete</button>
+  </div>`;
+
+  return html;
+}
+
+function typeLabel(t) {
+  const map = {
+    rect: 'Rectangle', circle: 'Circle', diagonal: 'Diagonal Wall',
+    windmill: 'Windmill', orbit: 'Orbit Object',
+    'pipe-in': 'Pipe Entrance', 'pipe-out': 'Pipe Exit'
+  };
+  if (t === 'rect') return 'Rectangle / Moving Block';
+  return map[t] || t;
+}
+
+window.setProp = function(id, key, val) {
+  const item = findById(id);
+  if (!item) return;
+  item[key] = val;
+  render(); updateJson();
+};
+
+window.deleteItem = function(id) {
+  saveUndo();
+  removeById(id);
+  selectedId = null;
+  showProps(null);
+  renderLayers(); updateJson(); render();
+  toast('Deleted');
+};
+
+window.duplicateItem = function(id) {
+  const item = findById(id);
+  if (!item) return;
+  saveUndo();
+  const copy = JSON.parse(JSON.stringify(item));
+  copy._id = uid();
+  copy.x = (copy.x || 0) + 0.03;
+  copy.y = (copy.y || 0) + 0.03;
+  if (copy.x1 !== undefined) { copy.x1 += 0.03; copy.x2 += 0.03; copy.y1 += 0.03; copy.y2 += 0.03; }
+  delete copy.linkedTo;
+  const lvl = currentLevel();
+  const isMoving = copy._moving || ['windmill','orbit'].includes(copy.type);
+  if (isMoving) lvl.moving.push(copy);
+  else lvl.obstacles.push(copy);
+  selectedId = copy._id;
+  showProps(copy);
+  renderLayers(); updateJson(); render();
+  toast('Duplicated');
+};
+
+// ══════════════════════════════════════════════════════════════
+// LAYERS LIST
+// ══════════════════════════════════════════════════════════════
+const LAYER_ICONS = {
+  rect: '▬', circle: '●', diagonal: '╱', windmill: '✳', orbit: '◎',
+  'pipe-in': '↓', 'pipe-out': '↑'
+};
+const LAYER_COLORS = {
+  rect: '#a8a29e', circle: '#a8a29e', diagonal: '#a8a29e',
+  windmill: '#f97316', orbit: '#f97316',
+  'pipe-in': '#22d3ee', 'pipe-out': '#a78bfa'
+};
+
+function renderLayers() {
+  const list = document.getElementById('layers-list');
+  const items = allItems();
+  if (!items.length) {
+    list.innerHTML = '<div style="font-size:10px;color:var(--s700);padding:10px;text-align:center;">No items yet</div>';
+    return;
+  }
+  list.innerHTML = items.slice().reverse().map(item => {
+    const active = item._id === selectedId ? ' active' : '';
+    const icon = LAYER_ICONS[item.type] || '?';
+    const col = LAYER_COLORS[item.type] || '#a8a29e';
+    const label = item.type === 'rect' && item._moving ? 'mover' : item.type;
+    return `<div class="layer-item${active}" onclick="selectLayer(${item._id})">
+      <span class="layer-icon" style="color:${col};font-size:12px;">${icon}</span>
+      <span class="layer-type">${label}</span>
+    </div>`;
+  }).join('');
+}
+
+window.selectLayer = function(id) {
+  selectedId = id;
+  const item = findById(id);
+  showProps(item);
+  renderLayers();
+  render();
+};
+
+// ══════════════════════════════════════════════════════════════
+// LEVEL LIST
+// ══════════════════════════════════════════════════════════════
+function renderLevelList() {
+  const list = document.getElementById('level-list');
+  list.innerHTML = levels.map((lvl, i) => {
+    const active = i === currentLevelIdx ? ' active' : '';
+    return `<div class="level-item${active}" onclick="switchLevel(${i})">
+      <span class="level-num">${i + 1}</span>
+      <span class="level-name">${lvl.name}</span>
+      <span class="level-par">par ${lvl.par}</span>
+      <button class="level-del" onclick="event.stopPropagation();removeLevel(${i})">×</button>
+    </div>`;
+  }).join('');
+  // Sync header inputs
+  const lvl = currentLevel();
+  document.getElementById('level-name-input').value = lvl.name;
+  document.getElementById('par-input').value = lvl.par;
+}
+
+window.switchLevel = function(idx) {
+  currentLevelIdx = idx;
+  selectedId = null;
+  showProps(null);
+  renderLevelList();
+  renderLayers();
+  updateJson();
+  render();
+};
+
+function addLevel() {
+  saveUndo();
+  const lvl = createBlankLevel();
+  lvl.name = `Hole ${levels.length + 1}`;
+  levels.push(lvl);
+  currentLevelIdx = levels.length - 1;
+  switchLevel(currentLevelIdx);
+  toast('New level added');
+}
+
+function duplicateLevel() {
+  saveUndo();
+  const copy = JSON.parse(JSON.stringify(currentLevel()));
+  copy.name += ' (copy)';
+  // Re-id all items
+  const remap = id => {
+    const n = uid();
+    return n;
+  };
+  copy.obstacles.forEach(o => { o._id = uid(); });
+  copy.moving.forEach(o => { o._id = uid(); });
+  levels.splice(currentLevelIdx + 1, 0, copy);
+  switchLevel(currentLevelIdx + 1);
+  toast('Level duplicated');
+}
+
+window.removeLevel = function(idx) {
+  if (levels.length === 1) { toast('Need at least 1 level'); return; }
+  saveUndo();
+  levels.splice(idx, 1);
+  if (currentLevelIdx >= levels.length) currentLevelIdx = levels.length - 1;
+  switchLevel(currentLevelIdx);
+  toast('Level removed');
+};
+
+window.onNameChange = function(val) {
+  currentLevel().name = val;
+  renderLevelList();
+  updateJson();
+};
+
+window.onParChange = function(val) {
+  currentLevel().par = parseInt(val) || 3;
+  renderLevelList();
+  updateJson();
+};
+
+function clearLevel() {
+  saveUndo();
+  currentLevel().obstacles = [];
+  currentLevel().moving = [];
+  selectedId = null;
+  showProps(null);
+  renderLayers(); updateJson(); render();
+  toast('Level cleared');
+}
+
+// ══════════════════════════════════════════════════════════════
+// EXPORT
+// ══════════════════════════════════════════════════════════════
+function exportLevels() {
+  const exportData = cleanForExport(levels);
+  const json = JSON.stringify(exportData, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'puck-golf-levels.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Exported JSON!');
+}
+
+function cleanForExport(lvls) {
+  return lvls.map(lvl => {
+    const clean = {
+      name: lvl.name,
+      par: lvl.par,
+      puck: { x: +lvl.puck.x.toFixed(4), y: +lvl.puck.y.toFixed(4) },
+      hole: { x: +lvl.hole.x.toFixed(4), y: +lvl.hole.y.toFixed(4) },
+      obstacles: [],
+      moving: []
+    };
+
+    (lvl.obstacles || []).forEach(o => {
+      const out = { ...o };
+      delete out._id; delete out._moving; delete out._previewAngle;
+      // Handle pipes
+      if (o.type === 'pipe-in' || o.type === 'pipe-out') {
+        out.x = +o.x.toFixed(4); out.y = +o.y.toFixed(4); out.r = +o.r.toFixed(4);
+        delete out._rotation;
+        if (o.linkedTo) out.linkedTo = o.linkedTo;
+      }
+      // Rotated rects → export as diagonal (capsule) so game physics works at any angle
+      if (o.type === 'rect' && o._rotation) {
+        const rot = o._rotation;
+        const cx = o.x + o.w/2, cy = o.y + o.h/2;
+        const hw = o.w/2, hh = o.h/2;
+        // Use the long axis as the diagonal line
+        const cos = Math.cos(rot), sin = Math.sin(rot);
+        const longer = hw >= hh;
+        const ax = longer ? hw : hh, bx = longer ? hh : hw;
+        const dx = longer ? cos*ax : -sin*ax;
+        const dy = longer ? sin*ax : cos*ax;
+        clean.obstacles.push({
+          type: 'diagonal',
+          x1: +(cx - dx).toFixed(4), y1: +(cy - dy).toFixed(4),
+          x2: +(cx + dx).toFixed(4), y2: +(cy + dy).toFixed(4),
+          thickness: +(bx * 0.8).toFixed(4)
+        });
+        return;
+      }
+      if (o.type === 'rect') { out.x = +o.x.toFixed(4); out.y = +o.y.toFixed(4); out.w = +o.w.toFixed(4); out.h = +o.h.toFixed(4); delete out._rotation; }
+      if (o.type === 'circle') { out.x = +o.x.toFixed(4); out.y = +o.y.toFixed(4); out.r = +o.r.toFixed(4); delete out._rotation; }
+      if (o.type === 'diagonal') { out.x1 = +o.x1.toFixed(4); out.y1 = +o.y1.toFixed(4); out.x2 = +o.x2.toFixed(4); out.y2 = +o.y2.toFixed(4); out.thickness = +o.thickness.toFixed(4); }
+      clean.obstacles.push(out);
+    });
+
+    (lvl.moving || []).forEach(o => {
+      const out = { ...o };
+      delete out._id; delete out._previewAngle;
+      if (o.type === 'windmill') { out.x = +o.x.toFixed(4); out.y = +o.y.toFixed(4); delete out._rotation; }
+      if (o.type === 'orbit') { out.x = +o.x.toFixed(4); out.y = +o.y.toFixed(4); out.r = +o.r.toFixed(4); out.orbitR = +o.orbitR.toFixed(4); delete out._rotation; }
+      if (o.type === 'rect') { out.x = +o.x.toFixed(4); out.y = +o.y.toFixed(4); out.w = +o.w.toFixed(4); out.h = +o.h.toFixed(4); delete out._moving; delete out._rotation; }
+      clean.moving.push(out);
+    });
+
+    return clean;
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// TEST LEVEL — opens game in new tab with the custom level
+// ══════════════════════════════════════════════════════════════
+function testLevel() {
+  const data = cleanForExport([currentLevel()]);
+  const json = JSON.stringify(data);
+  const encoded = btoa(encodeURIComponent(json));
+  // Build a minimal game launcher that auto-loads the level
+  const launcher = `<!DOCTYPE html><html><head><meta charset=UTF-8><script>
+  window.addEventListener('DOMContentLoaded',()=>{
+    const data = JSON.parse(decodeURIComponent(atob('${encoded}')));
+    localStorage.setItem('_pgd_test', JSON.stringify(data));
+    window.location = 'puck-golf.html';
+  });
+  </sc` + `ript></head><body>Loading test…</body></html>`;
+
+  // Instead, just export and show instructions
+  exportLevels();
+  toast('Exported! Load in Puck Golf via "Load Custom Levels"');
+}
+
+// ══════════════════════════════════════════════════════════════
+// JSON PREVIEW
+// ══════════════════════════════════════════════════════════════
+function updateJson() {
+  const area = document.getElementById('json-area');
+  if (!area.classList.contains('open')) return;
+  const data = cleanForExport([currentLevel()]);
+  document.getElementById('json-output').textContent = JSON.stringify(data[0], null, 2);
+}
+
+function toggleJson() {
+  const area = document.getElementById('json-area');
+  const arrow = document.getElementById('json-arrow');
+  area.classList.toggle('open');
+  arrow.textContent = area.classList.contains('open') ? '▼' : '▲';
+  if (area.classList.contains('open')) updateJson();
+}
+
+// ══════════════════════════════════════════════════════════════
+// GRID / SNAP
+// ══════════════════════════════════════════════════════════════
+function toggleGrid() {
+  showGrid = !showGrid;
+  document.getElementById('grid-btn').classList.toggle('active', showGrid);
+  render();
+}
+
+function toggleSnap() {
+  snapGrid = !snapGrid;
+  document.getElementById('snap-btn').classList.toggle('active', snapGrid);
+  toast(snapGrid ? 'Snap ON' : 'Snap OFF');
+}
+
+// ══════════════════════════════════════════════════════════════
+// KEYBOARD
+// ══════════════════════════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z') { undoAction(); return; }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { redoAction(); return; }
+  if (e.key === 'Delete' || e.key === 'Backspace') { if (selectedId) deleteItem(selectedId); return; }
+  if (e.key === 'Escape') { setTool('select'); selectedId = null; showProps(null); render(); return; }
+  if (e.key === 'g') toggleGrid();
+  if (e.key === 's') toggleSnap();
+  // Rotate with [ and ]
+  if ((e.key === '[' || e.key === ']') && selectedId) {
+    const item = findById(selectedId);
+    if (item && item.type !== 'circle' && item.type !== 'diagonal') {
+      e.preventDefault();
+      saveUndo();
+      const step = e.shiftKey ? Math.PI/2 : Math.PI/12; // 15° or 90°
+      item._rotation = ((item._rotation || 0) + (e.key === ']' ? step : -step));
+      showProps(item); render(); updateJson();
+    }
+    return;
+  }
+  // Nudge selected item
+  if (selectedId) {
+    const item = findById(selectedId);
+    if (!item) return;
+    const d = e.shiftKey ? 0.02 : 0.005;
+    let moved = true;
+    if (e.key === 'ArrowLeft') { if (item.x !== undefined) item.x -= d; else { item.x1 -= d; item.x2 -= d; } }
+    else if (e.key === 'ArrowRight') { if (item.x !== undefined) item.x += d; else { item.x1 += d; item.x2 += d; } }
+    else if (e.key === 'ArrowUp') { if (item.y !== undefined) item.y -= d; else { item.y1 -= d; item.y2 -= d; } }
+    else if (e.key === 'ArrowDown') { if (item.y !== undefined) item.y += d; else { item.y1 += d; item.y2 += d; } }
+    else moved = false;
+    if (moved) { e.preventDefault(); showProps(item); updateJson(); render(); }
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════════════════════
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// ══════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════
+// Assign IDs to any items
+function ensureIds(lvl) {
+  (lvl.obstacles || []).forEach(o => { if (!o._id) o._id = uid(); });
+  (lvl.moving || []).forEach(o => { if (!o._id) o._id = uid(); });
+}
+levels.forEach(ensureIds);
+
+setTool('select');
+renderLevelList();
+renderLayers();
+setTimeout(() => {
+  resize();
+  animateDesigner();
+}, 50);
+</script>
+</body>
+</html>
