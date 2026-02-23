@@ -276,6 +276,36 @@ label.btn input{display:none;}
 // moving rect/circle uses {x,y,...,axis,range,speed} or {x,y,...,orbitX,orbitY,orbitR,orbitSpeed}
 
 // ═══════════════════════════════════════════════════════════
+// EMBEDDED COURSES
+// ═══════════════════════════════════════════════════════════
+const EMBEDDED_COURSES = [
+  {
+  name: "Mutha Pucka Home Course",
+  levels: [
+    { name:"Open Lane", par:2, puck:{x:0.12,y:0.5}, hole:{x:0.88,y:0.5}, obstacles:[], moving:[] },
+    { name:"Soft Bend", par:3, puck:{x:0.1,y:0.8}, hole:{x:0.9,y:0.2}, obstacles:[{type:"circle",x:0.5,y:0.5,r:0.12}], moving:[] },
+    { name:"Split Gate", par:3, puck:{x:0.12,y:0.5}, hole:{x:0.88,y:0.5}, obstacles:[{type:"rect",x:0.45,y:0.15,w:0.05,h:0.25},{type:"rect",x:0.45,y:0.6,w:0.05,h:0.25}], moving:[] },
+    { name:"Diagonal Intro", par:3, puck:{x:0.1,y:0.9}, hole:{x:0.9,y:0.1}, obstacles:[{type:"diagonal",x1:0.3,y1:0.2,x2:0.7,y2:0.6,thickness:0.03}], moving:[] },
+    { name:"First Windmill", par:3, puck:{x:0.1,y:0.5}, hole:{x:0.9,y:0.5}, obstacles:[], moving:[{type:"windmill",x:0.5,y:0.5,blades:4,length:0.16,width:0.02,speed:1.2}] },
+    { name:"Timing Window", par:4, puck:{x:0.1,y:0.5}, hole:{x:0.9,y:0.5}, obstacles:[{type:"rect",x:0.35,y:0.0,w:0.05,h:0.4},{type:"rect",x:0.35,y:0.6,w:0.05,h:0.4}], moving:[{type:"windmill",x:0.6,y:0.5,blades:3,length:0.14,width:0.02,speed:1.6}] },
+    { name:"Orbit Lesson", par:4, puck:{x:0.1,y:0.5}, hole:{x:0.9,y:0.5}, obstacles:[], moving:[{type:"orbit",shape:"circle",x:0.5,y:0.5,r:0.035,orbitR:0.18,orbitSpeed:1.2,orbitPhase:0}] },
+    { name:"Cross Pressure", par:4, puck:{x:0.12,y:0.85}, hole:{x:0.88,y:0.15}, obstacles:[{type:"diagonal",x1:0.2,y1:0.6,x2:0.8,y2:0.4,thickness:0.03}], moving:[{type:"windmill",x:0.5,y:0.5,blades:4,length:0.16,width:0.02,speed:1.8}] },
+    { name:"Foundation Finale", par:5, puck:{x:0.08,y:0.9}, hole:{x:0.92,y:0.1}, obstacles:[{type:"circle",x:0.3,y:0.6,r:0.07},{type:"circle",x:0.7,y:0.4,r:0.07}], moving:[{type:"orbit",shape:"circle",x:0.5,y:0.5,r:0.035,orbitR:0.22,orbitSpeed:1.8,orbitPhase:0},{type:"windmill",x:0.75,y:0.7,blades:3,length:0.14,width:0.02,speed:2.0}] }
+  ]
+},
+  {
+  name: "Test Course",
+  levels: [
+    { name:"Gentle Start", par:3, puck:{x:0.5054,y:0.9381}, hole:{x:0.5,y:0.0734}, obstacles:[{type:"circle",x:0.5083,y:0.5096,r:0.1476}], moving:[] },
+    { name:"Aran's Arena", par:3, puck:{x:0.5033,y:0.0875}, hole:{x:0.5042,y:0.9253}, obstacles:[{type:"pipe-in",x:0.0396,y:0.2018,r:0.04,linkedTo:1003},{type:"pipe-out",x:0.0417,y:0.9234,r:0.04},{type:"rect",x:0.1938,y:0.1699,w:0.6833,h:0.0498}], moving:[] },
+    { name:"Heinz's Hole", par:3, puck:{x:0.5158,y:0.924}, hole:{x:0.5146,y:0.0875}, obstacles:[], moving:[{type:"windmill",x:0.8479,y:0.3857,blades:4,length:0.15,width:0.022,speed:1.5},{type:"windmill",x:0.5,y:0.613,blades:4,length:0.15,width:0.022,speed:1.5},{type:"windmill",x:0.1646,y:0.3972,blades:4,length:0.15,width:0.022,speed:1.5},{type:"rect",x:0.4063,y:0.2171,w:0.2104,h:0.0281,axis:"x",range:0.3,speed:1.2}] },
+    { name:"Hardcore Heaven", par:3, puck:{x:0.1367,y:0.9291}, hole:{x:0.8583,y:0.0734}, obstacles:[{type:"diagonal",x1:0,y1:0.0958,x2:0.1396,y2:0.0077,thickness:0.025},{type:"diagonal",x1:0.7312,y1:0.9949,x2:0.9833,y2:0.8787,thickness:0.025}], moving:[{type:"orbit",shape:"circle",x:0.2417,y:0.7267,r:0.035,orbitR:0.2083,orbitSpeed:1.5,orbitPhase:0},{type:"orbit",shape:"circle",x:0.4771,y:0.5185,r:0.035,orbitR:0.2083,orbitSpeed:1.5,orbitPhase:0},{type:"orbit",shape:"circle",x:0.6937,y:0.3091,r:0.035,orbitR:0.2083,orbitSpeed:1.5,orbitPhase:0}] },
+    { name:"Hole 5", par:3, puck:{x:0.4887,y:0.0658}, hole:{x:0.8958,y:0.9393}, obstacles:[{type:"diagonal",x1:0.4479,y1:0.0294,x2:0.175,y2:0.281,thickness:0.025},{type:"diagonal",x1:0.6229,y1:0.1865,x2:0.2458,y2:0.5198,thickness:0.025},{type:"diagonal",x1:0.9375,y1:0.1826,x2:0.6563,y2:0.4598,thickness:0.025},{type:"diagonal",x1:0.125,y1:0.7778,x2:0.5542,y2:0.9195,thickness:0.025},{type:"diagonal",x1:0.4042,y1:0.6501,x2:0.7771,y2:0.7995,thickness:0.025}], moving:[] }
+  ]
+}
+];
+
+// ═══════════════════════════════════════════════════════════
 // LEVEL LOADING
 // ═══════════════════════════════════════════════════════════
 let LEVELS=[];
@@ -298,7 +328,10 @@ async function fetchCourse(url){
     const r=await fetch(url,{cache:'no-cache'});
     if(!r.ok) return null;
     const data=await r.json();
-    return normaliseLevels(data);
+    // Handle both flat array and {name, levels:[]} object formats
+    const levels = Array.isArray(data) ? data : (data.levels || null);
+    if(!levels) return null;
+    return normaliseLevels(levels);
   }catch(e){ return null; }
 }
 
@@ -311,12 +344,20 @@ async function detectAndShowStart(){
   detectedCourses=[];
   hideHomeBubble();
 
+  // Always start with embedded courses
+  for(const c of EMBEDDED_COURSES){
+    try{ detectedCourses.push({name:c.name, levels:normaliseLevels([...c.levels]), _src:'embedded'}); }catch(e){}
+  }
+
+  // Also try fetching from external files (works when served from a web server)
   try{
     const r=await fetch('courses.json',{cache:'no-cache'});
     if(r.ok){
       const raw=await r.json();
       if(Array.isArray(raw)){
+        const existingNames = new Set(detectedCourses.map(c=>c.name));
         for(const entry of raw){
+          if(existingNames.has(entry.name)) continue; // skip duplicates
           if(entry.levels){
             try{ detectedCourses.push({name:entry.name||'Course', levels:normaliseLevels(entry.levels), _src:'courses.json'}); }catch(e){}
           } else if(entry.file){
@@ -327,17 +368,6 @@ async function detectAndShowStart(){
       }
     }
   }catch(e){}
-
-  if(!detectedCourses.length){
-    const fallbacks=[
-      'mutha-pucka-golf-levels.json','puck-golf-levels.json',
-      'levels.json','course.json','holes.json'
-    ];
-    for(const f of fallbacks){
-      const lvls=await fetchCourse(f);
-      if(lvls) detectedCourses.push({name:prettyName(f), levels:lvls, _src:f});
-    }
-  }
 
   buildStartScreen();
 }
