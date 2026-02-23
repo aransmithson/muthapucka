@@ -372,6 +372,18 @@ select.px-input { cursor: pointer; }
     <button class="sm-btn" onclick="duplicateLevel()">Dupe</button>
     <button class="sm-btn primary" onclick="exportLevels()">Export JSON</button>
   </div>
+  <div class="level-controls" style="border-top:1px solid var(--s800);">
+    <label class="sm-btn" style="display:flex;align-items:center;justify-content:center;cursor:pointer;gap:4px;" title="Replace all levels with loaded JSON">
+      <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Load JSON
+      <input type="file" id="import-file-input" accept=".json" style="display:none;" onchange="importLevels(event, false)">
+    </label>
+    <label class="sm-btn" style="display:flex;align-items:center;justify-content:center;cursor:pointer;gap:4px;" title="Append loaded JSON levels to existing">
+      <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><path d="M5 12l7 7 7-7"/></svg>
+      Merge
+      <input type="file" id="merge-file-input" accept=".json" style="display:none;" onchange="importLevels(event, true)">
+    </label>
+  </div>
 </div>
 
 <!-- ═══════════════════════ CANVAS AREA ═══════════════════════ -->
@@ -1900,6 +1912,68 @@ function exportLevels() {
   a.click();
   URL.revokeObjectURL(url);
   toast('Exported JSON!');
+}
+
+// ══════════════════════════════════════════════════════════════
+// IMPORT
+// ══════════════════════════════════════════════════════════════
+function importLevels(event, merge = false) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  event.target.value = ''; // reset so same file can be loaded again
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      let raw = JSON.parse(e.target.result);
+
+      // Accept: single hole object OR array of holes
+      if (!Array.isArray(raw)) raw = [raw];
+
+      // Normalise each level into the designer's internal format
+      const imported = raw.map(lvl => {
+        const nl = createBlankLevel();
+        nl.name = lvl.name || 'Imported';
+        nl.par  = lvl.par  || 3;
+
+        if (lvl.puck) { nl.puck.x = lvl.puck.x; nl.puck.y = lvl.puck.y; }
+        if (lvl.hole) { nl.hole.x = lvl.hole.x; nl.hole.y = lvl.hole.y; }
+
+        // Static obstacles
+        (lvl.obstacles || []).forEach(o => {
+          const ob = { ...o, _id: uid() };
+          // diagonal → keep as-is; rect/circle just need _id
+          nl.obstacles.push(ob);
+        });
+
+        // Moving obstacles
+        (lvl.moving || []).forEach(o => {
+          const ob = { ...o, _id: uid() };
+          nl.moving.push(ob);
+        });
+
+        ensureIds(nl);
+        return nl;
+      });
+
+      saveUndo();
+
+      if (merge) {
+        levels.push(...imported);
+        switchLevel(levels.length - imported.length); // jump to first new
+        toast(`Merged ${imported.length} level${imported.length !== 1 ? 's' : ''}`);
+      } else {
+        levels = imported;
+        currentLevelIdx = 0;
+        switchLevel(0);
+        toast(`Loaded ${imported.length} level${imported.length !== 1 ? 's' : ''}`);
+      }
+
+    } catch (err) {
+      toast('Error: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
 }
 
 function cleanForExport(lvls) {

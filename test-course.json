@@ -1,0 +1,227 @@
+[
+  {
+    "name": "Gentle Start",
+    "par": 3,
+    "puck": {
+      "x": 0.5054,
+      "y": 0.9381
+    },
+    "hole": {
+      "x": 0.5,
+      "y": 0.0734
+    },
+    "obstacles": [
+      {
+        "type": "circle",
+        "x": 0.5083,
+        "y": 0.5096,
+        "r": 0.1476
+      }
+    ],
+    "moving": []
+  },
+  {
+    "name": "Aran's Arena",
+    "par": 3,
+    "puck": {
+      "x": 0.5033,
+      "y": 0.0875
+    },
+    "hole": {
+      "x": 0.5042,
+      "y": 0.9253
+    },
+    "obstacles": [
+      {
+        "type": "pipe-in",
+        "x": 0.0396,
+        "y": 0.2018,
+        "r": 0.04,
+        "linkedTo": 1003
+      },
+      {
+        "type": "pipe-out",
+        "x": 0.0417,
+        "y": 0.9234,
+        "r": 0.04
+      },
+      {
+        "type": "rect",
+        "x": 0.1938,
+        "y": 0.1699,
+        "w": 0.6833,
+        "h": 0.0498
+      }
+    ],
+    "moving": []
+  },
+  {
+    "name": "Heinz's Hole",
+    "par": 3,
+    "puck": {
+      "x": 0.5158,
+      "y": 0.924
+    },
+    "hole": {
+      "x": 0.5146,
+      "y": 0.0875
+    },
+    "obstacles": [],
+    "moving": [
+      {
+        "type": "windmill",
+        "x": 0.8479,
+        "y": 0.3857,
+        "blades": 4,
+        "length": 0.15,
+        "width": 0.022,
+        "speed": 1.5
+      },
+      {
+        "type": "windmill",
+        "x": 0.5,
+        "y": 0.613,
+        "blades": 4,
+        "length": 0.15,
+        "width": 0.022,
+        "speed": 1.5
+      },
+      {
+        "type": "windmill",
+        "x": 0.1646,
+        "y": 0.3972,
+        "blades": 4,
+        "length": 0.15,
+        "width": 0.022,
+        "speed": 1.5
+      },
+      {
+        "type": "rect",
+        "x": 0.4063,
+        "y": 0.2171,
+        "w": 0.2104,
+        "h": 0.0281,
+        "axis": "x",
+        "range": 0.3,
+        "speed": 1.2
+      }
+    ]
+  },
+  {
+    "name": "Hardcore Heaven",
+    "par": 3,
+    "puck": {
+      "x": 0.1367,
+      "y": 0.9291
+    },
+    "hole": {
+      "x": 0.8583,
+      "y": 0.0734
+    },
+    "obstacles": [
+      {
+        "type": "diagonal",
+        "x1": 0,
+        "y1": 0.0958,
+        "x2": 0.1396,
+        "y2": 0.0077,
+        "thickness": 0.025
+      },
+      {
+        "type": "diagonal",
+        "x1": 0.7312,
+        "y1": 0.9949,
+        "x2": 0.9833,
+        "y2": 0.8787,
+        "thickness": 0.025
+      }
+    ],
+    "moving": [
+      {
+        "type": "orbit",
+        "shape": "circle",
+        "x": 0.2417,
+        "y": 0.7267,
+        "r": 0.035,
+        "orbitR": 0.2083,
+        "orbitSpeed": 1.5,
+        "orbitPhase": 0
+      },
+      {
+        "type": "orbit",
+        "shape": "circle",
+        "x": 0.4771,
+        "y": 0.5185,
+        "r": 0.035,
+        "orbitR": 0.2083,
+        "orbitSpeed": 1.5,
+        "orbitPhase": 0
+      },
+      {
+        "type": "orbit",
+        "shape": "circle",
+        "x": 0.6937,
+        "y": 0.3091,
+        "r": 0.035,
+        "orbitR": 0.2083,
+        "orbitSpeed": 1.5,
+        "orbitPhase": 0
+      }
+    ]
+  },
+  {
+    "name": "Hole 5",
+    "par": 3,
+    "puck": {
+      "x": 0.4887,
+      "y": 0.0658
+    },
+    "hole": {
+      "x": 0.8958,
+      "y": 0.9393
+    },
+    "obstacles": [
+      {
+        "type": "diagonal",
+        "x1": 0.4479,
+        "y1": 0.0294,
+        "x2": 0.175,
+        "y2": 0.281,
+        "thickness": 0.025
+      },
+      {
+        "type": "diagonal",
+        "x1": 0.6229,
+        "y1": 0.1865,
+        "x2": 0.2458,
+        "y2": 0.5198,
+        "thickness": 0.025
+      },
+      {
+        "type": "diagonal",
+        "x1": 0.9375,
+        "y1": 0.1826,
+        "x2": 0.6563,
+        "y2": 0.4598,
+        "thickness": 0.025
+      },
+      {
+        "type": "diagonal",
+        "x1": 0.125,
+        "y1": 0.7778,
+        "x2": 0.5542,
+        "y2": 0.9195,
+        "thickness": 0.025
+      },
+      {
+        "type": "diagonal",
+        "x1": 0.4042,
+        "y1": 0.6501,
+        "x2": 0.7771,
+        "y2": 0.7995,
+        "thickness": 0.025
+      }
+    ],
+    "moving": []
+  }
+]
