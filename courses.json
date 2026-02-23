@@ -1,10 +1,10 @@
 [
   {
-    "name": "Test Course",
-    "file": "test-course.json"
-  },
-  {
     "name": "Mutha Pucka Home Course",
     "file": "Mutha-Pucka-Home-Course.json"
+  },
+  {
+    "name": "Test Course",
+    "file": "test-course.json"
   }
 ]
