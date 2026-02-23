@@ -1365,51 +1365,74 @@ function drawPipeItem(item, selected = false) {
   const cx = nx2px(item.x), cy = ny2py(item.y);
   const r = minPx(item.r || 0.04);
   const isIn = item.type === 'pipe-in';
-  const col = isIn ? '#22d3ee' : '#a78bfa';
-  const col2 = isIn ? '#0891b2' : '#7c3aed';
-  const rot = item._rotation || 0;
 
   ctx.save();
-  if (rot) { ctx.translate(cx, cy); ctx.rotate(rot); ctx.translate(-cx, -cy); }
-  ctx.shadowColor = col; ctx.shadowBlur = selected ? 18 : 10;
+  ctx.shadowBlur = selected ? 20 : 12;
 
-  // Outer ring
-  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  const g = ctx.createRadialGradient(cx - r*.3, cy - r*.3, r*.1, cx, cy, r);
-  g.addColorStop(0, col); g.addColorStop(1, col2);
-  ctx.fillStyle = g; ctx.fill();
-  ctx.strokeStyle = selected ? '#fff' : 'rgba(255,255,255,0.3)';
-  ctx.lineWidth = selected ? 2 : 1; ctx.stroke();
-
-  // Inner symbol
-  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
   if (isIn) {
-    // Arrow pointing in (downward)
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - r*.4);
-    ctx.lineTo(cx, cy + r*.4);
-    ctx.moveTo(cx - r*.3, cy + r*.1);
-    ctx.lineTo(cx, cy + r*.4);
-    ctx.lineTo(cx + r*.3, cy + r*.1);
-    ctx.stroke();
+    // ── Pipe-in: dark pit with subtle green glow ──
+    ctx.shadowColor = selected ? '#4ade80' : 'rgba(0,0,0,0.8)';
+    // Ground shadow
+    const shadow = ctx.createRadialGradient(cx, cy, r*0.3, cx, cy, r*3);
+    shadow.addColorStop(0, 'rgba(0,0,0,0.4)'); shadow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = shadow; ctx.beginPath(); ctx.arc(cx, cy, r*3, 0, Math.PI*2); ctx.fill();
+    // Dark pit
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2);
+    const pit = ctx.createRadialGradient(cx, cy-r*.2, r*.1, cx, cy+r*.3, r*1.2);
+    pit.addColorStop(0, '#020a03'); pit.addColorStop(1, '#0d1a0d');
+    ctx.fillStyle = pit; ctx.fill();
+    // Rim
+    ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI*1.1, Math.PI*1.9);
+    ctx.strokeStyle = selected ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.18)';
+    ctx.lineWidth = selected ? 2 : 1.5; ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI*-0.1, Math.PI*1.1);
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 2; ctx.stroke();
+    // Green inner glow
+    ctx.beginPath(); ctx.arc(cx, cy, r*0.55, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(74,222,128,0.12)'; ctx.fill();
+    // Label
+    ctx.font = `bold ${Math.max(8, r*.5)}px DM Mono`;
+    ctx.fillStyle = 'rgba(74,222,128,0.8)'; ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle'; ctx.globalAlpha = 0.9;
+    ctx.fillText('IN', cx, cy + r * 1.7);
   } else {
-    // Arrow pointing out (upward)
-    ctx.beginPath();
-    ctx.moveTo(cx, cy + r*.4);
-    ctx.lineTo(cx, cy - r*.4);
-    ctx.moveTo(cx - r*.3, cy - r*.1);
-    ctx.lineTo(cx, cy - r*.4);
-    ctx.lineTo(cx + r*.3, cy - r*.1);
-    ctx.stroke();
+    // ── Pipe-out: green concentric circles (rotation-independent) ──
+    ctx.shadowColor = selected ? '#86efac' : 'rgba(74,222,128,0.5)';
+    // Ground shadow
+    const shadow = ctx.createRadialGradient(cx, cy, r*0.5, cx, cy, r*2.8);
+    shadow.addColorStop(0, 'rgba(0,0,0,0.4)'); shadow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = shadow; ctx.beginPath(); ctx.arc(cx, cy, r*2.8, 0, Math.PI*2); ctx.fill();
+    // Outer ring
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2);
+    const outerG = ctx.createRadialGradient(cx-r*.3, cy-r*.3, r*.05, cx, cy, r);
+    outerG.addColorStop(0, '#4a7a4a'); outerG.addColorStop(0.5, '#2d5a2d'); outerG.addColorStop(1, '#1a3a1a');
+    ctx.fillStyle = outerG; ctx.fill();
+    ctx.strokeStyle = selected ? '#86efac' : 'rgba(134,239,172,0.6)';
+    ctx.lineWidth = selected ? 2.5 : 2; ctx.stroke();
+    // Wall ring
+    ctx.beginPath(); ctx.arc(cx, cy, r*0.72, 0, Math.PI*2);
+    const wallG = ctx.createRadialGradient(cx-r*.2, cy-r*.2, r*.05, cx, cy, r*0.72);
+    wallG.addColorStop(0, '#3a6a3a'); wallG.addColorStop(1, '#1e481e');
+    ctx.fillStyle = wallG; ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1; ctx.stroke();
+    // Hollow centre
+    ctx.beginPath(); ctx.arc(cx, cy, r*0.48, 0, Math.PI*2);
+    const holeG = ctx.createRadialGradient(cx, cy, 0, cx, cy, r*0.48);
+    holeG.addColorStop(0, '#0a1a0a'); holeG.addColorStop(1, '#050d05');
+    ctx.fillStyle = holeG; ctx.fill();
+    ctx.fillStyle = 'rgba(74,222,128,0.15)'; ctx.fill();
+    // Specular
+    ctx.beginPath(); ctx.arc(cx-r*.28, cy-r*.28, r*.18, 0, Math.PI*2);
+    const spec = ctx.createRadialGradient(cx-r*.28, cy-r*.28, 0, cx-r*.28, cy-r*.28, r*.18);
+    spec.addColorStop(0, 'rgba(255,255,255,0.22)'); spec.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = spec; ctx.fill();
+    // Label
+    ctx.font = `bold ${Math.max(8, r*.5)}px DM Mono`;
+    ctx.fillStyle = '#86efac'; ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle'; ctx.globalAlpha = 0.9;
+    ctx.fillText('OUT', cx, cy + r * 1.7);
   }
 
-  // Label
-  ctx.font = `bold ${Math.max(8, r*.5)}px DM Mono`;
-  ctx.fillStyle = '#fff';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.globalAlpha = 0.7;
-  ctx.fillText(isIn ? 'IN' : 'OUT', cx, cy + r * 1.7);
   ctx.restore();
 }
 
@@ -1725,13 +1748,13 @@ function buildPropsHTML(item) {
     html += '</div><div class="prop-subgroup">';
     html += '<div class="px-row"><span class="px-label">Direction</span>';
     html += '<input class="px-input" type="number" value="'+(item.direction||0)+'" min="0" max="359" step="5"';
-    html += ' oninput="setProp('+JSON.stringify(id)+','direction',+this.value)"></div>';
+    html += ` oninput="setProp(${JSON.stringify(id)},'direction',+this.value)"></div>`;
     html += '<div class="px-row"><span class="px-label">Force</span>';
     html += '<input class="px-input" type="number" value="'+(+(item.force||1).toFixed(2))+'" min="0.1" max="5" step="0.1"';
-    html += ' oninput="setProp('+JSON.stringify(id)+','force',+this.value)"></div>';
+    html += ` oninput="setProp(${JSON.stringify(id)},'force',+this.value)"></div>`;
     html += '<div class="px-row"><span class="px-label">Range</span>';
     html += '<input class="px-input" type="number" value="'+(+(item.range||0.22).toFixed(3))+'" min="0.05" max="0.8" step="0.01"';
-    html += ' oninput="setProp('+JSON.stringify(id)+','range',+this.value)"></div>';
+    html += ` oninput="setProp(${JSON.stringify(id)},'range',+this.value)"></div>`;
     html += '</div>' + R();
   }
 
