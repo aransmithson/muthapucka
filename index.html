@@ -87,7 +87,7 @@ label.btn input{display:none;}
       <div class="power-track"><div class="power-fill" id="power-fill" style="width:0%"></div></div>
       <div class="angle-display" id="angle-display">angle —</div>
     </div>
-    <div id="hint">drag back<br>to aim & shoot</div>
+    <div id="hint">click & drag<br>to aim & shoot</div>
   </div>
 
   <div class="overlay" id="overlay-start">
@@ -375,6 +375,122 @@ const DEFAULT_LEVELS = [
 ];
 
 // ═══════════════════════════════════════════════════════════
+// AUDIO
+// ═══════════════════════════════════════════════════════════
+let audioCtx = null;
+
+function getAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function playHit(speed) {
+  try {
+    const ac = getAudio();
+    const power = Math.min(speed / 1400, 1);
+    // Body thump
+    const osc = ac.createOscillator();
+    const oscGain = ac.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(120 + power * 80, ac.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(55, ac.currentTime + 0.1);
+    oscGain.gain.setValueAtTime(0.55 * power, ac.currentTime);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.12);
+    osc.connect(oscGain); oscGain.connect(ac.destination);
+    osc.start(); osc.stop(ac.currentTime + 0.14);
+    // Noise transient
+    const buf = ac.createBuffer(1, Math.floor(ac.sampleRate * 0.1), ac.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) {
+      const t = i / ac.sampleRate;
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-t * 40) * 0.5;
+    }
+    const src = ac.createBufferSource();
+    const gain = ac.createGain();
+    gain.gain.setValueAtTime(0.3 * power, ac.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.08);
+    src.buffer = buf; src.connect(gain); gain.connect(ac.destination);
+    src.start(); src.stop(ac.currentTime + 0.1);
+  } catch(e) {}
+}
+
+let lastBounceTime = 0;
+function playBounce(speed) {
+  try {
+    const now = performance.now();
+    if (now - lastBounceTime < 55) return;
+    lastBounceTime = now;
+    const ac = getAudio();
+    const power = Math.min(speed / 900, 1);
+    // Pitched click
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(420 + power * 280, ac.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(140, ac.currentTime + 0.07);
+    gain.gain.setValueAtTime(0.2 * Math.max(power, 0.2), ac.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.09);
+    osc.connect(gain); gain.connect(ac.destination);
+    osc.start(); osc.stop(ac.currentTime + 0.1);
+    // Noise snap
+    const buf = ac.createBuffer(1, Math.floor(ac.sampleRate * 0.04), ac.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random()*2-1) * Math.exp(-i / (ac.sampleRate * 0.008));
+    const ns = ac.createBufferSource();
+    const ng = ac.createGain();
+    ng.gain.setValueAtTime(0.14 * power, ac.currentTime);
+    ng.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.04);
+    ns.buffer = buf; ns.connect(ng); ng.connect(ac.destination);
+    ns.start(); ns.stop(ac.currentTime + 0.05);
+  } catch(e) {}
+}
+
+function playSunk() {
+  try {
+    const ac = getAudio();
+    // Descending whoosh
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(540, ac.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(105, ac.currentTime + 0.32);
+    gain.gain.setValueAtTime(0.45, ac.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.45);
+    osc.connect(gain); gain.connect(ac.destination);
+    osc.start(); osc.stop(ac.currentTime + 0.5);
+    // Deep thud
+    const osc2 = ac.createOscillator();
+    const g2 = ac.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(85, ac.currentTime + 0.15);
+    osc2.frequency.exponentialRampToValueAtTime(38, ac.currentTime + 0.45);
+    g2.gain.setValueAtTime(0, ac.currentTime);
+    g2.gain.setValueAtTime(0.55, ac.currentTime + 0.15);
+    g2.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.5);
+    osc2.connect(g2); g2.connect(ac.destination);
+    osc2.start(); osc2.stop(ac.currentTime + 0.55);
+    // Victory shimmer chime
+    setTimeout(() => {
+      try {
+        const ac2 = getAudio();
+        [880, 1108, 1318, 1760].forEach((freq, i) => {
+          const o = ac2.createOscillator();
+          const g = ac2.createGain();
+          o.type = 'sine'; o.frequency.value = freq;
+          g.gain.setValueAtTime(0, ac2.currentTime + i * 0.06);
+          g.gain.linearRampToValueAtTime(0.1, ac2.currentTime + i * 0.06 + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.001, ac2.currentTime + i * 0.06 + 0.45);
+          o.connect(g); g.connect(ac2.destination);
+          o.start(ac2.currentTime + i * 0.06);
+          o.stop(ac2.currentTime + i * 0.06 + 0.5);
+        });
+      } catch(e) {}
+    }, 200);
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════════════════
 // GAME STATE
 // ═══════════════════════════════════════════════════════════
 const canvas = document.getElementById('gameCanvas');
@@ -516,10 +632,10 @@ function update(dt, ts) {
   const r = puck.r;
 
   // Boundary walls
-  if (puck.x - r < 0) { puck.x=r; if(puck.vx<0){ puck.vx=-puck.vx*WALL_REST; spawnParticles(puck.x,puck.y); } }
-  if (puck.x + r > W) { puck.x=W-r; if(puck.vx>0){ puck.vx=-puck.vx*WALL_REST; spawnParticles(puck.x,puck.y); } }
-  if (puck.y - r < 0) { puck.y=r; if(puck.vy<0){ puck.vy=-puck.vy*WALL_REST; spawnParticles(puck.x,puck.y); } }
-  if (puck.y + r > H) { puck.y=H-r; if(puck.vy>0){ puck.vy=-puck.vy*WALL_REST; spawnParticles(puck.x,puck.y); } }
+  if (puck.x - r < 0) { puck.x=r; if(puck.vx<0){ puck.vx=-puck.vx*WALL_REST; playBounce(Math.abs(puck.vx)); spawnParticles(puck.x,puck.y); } }
+  if (puck.x + r > W) { puck.x=W-r; if(puck.vx>0){ puck.vx=-puck.vx*WALL_REST; playBounce(Math.abs(puck.vx)); spawnParticles(puck.x,puck.y); } }
+  if (puck.y - r < 0) { puck.y=r; if(puck.vy<0){ puck.vy=-puck.vy*WALL_REST; playBounce(Math.abs(puck.vy)); spawnParticles(puck.x,puck.y); } }
+  if (puck.y + r > H) { puck.y=H-r; if(puck.vy>0){ puck.vy=-puck.vy*WALL_REST; playBounce(Math.abs(puck.vy)); spawnParticles(puck.x,puck.y); } }
 
   // Static obstacle collisions
   staticObs.forEach(o => { if(o) resolveStaticCollision(o, OBS_REST); });
@@ -536,6 +652,7 @@ function update(dt, ts) {
     if (hd < hole.r * 0.4) {
       state = 'sunk'; sunkTime = performance.now();
       puck.vx = 0; puck.vy = 0;
+      playSunk();
       setTimeout(showHoleComplete, 500);
       return;
     }
@@ -613,6 +730,7 @@ function resolveRectCollision(px, py, pw, ph, obsVx, obsVy, rest) {
   const ov = r - Math.sqrt(dSq);
   puck.x += nx*(ov+1); puck.y += ny*(ov+1);
   applyReflect(nx, ny, obsVx, obsVy, rest);
+  playBounce(Math.hypot(puck.vx, puck.vy));
   spawnParticles(puck.x, puck.y);
 }
 
@@ -624,6 +742,7 @@ function resolveCircleCollision(cx, cy, cr, obsVx, obsVy, rest) {
   const nx = d > 0.001 ? dx/d : 1, ny = d > 0.001 ? dy/d : 0;
   puck.x += nx*(minD-d+1); puck.y += ny*(minD-d+1);
   applyReflect(nx, ny, obsVx, obsVy, rest);
+  playBounce(Math.hypot(puck.vx, puck.vy));
   spawnParticles(puck.x, puck.y);
 }
 
@@ -641,6 +760,7 @@ function resolveCapsuleCollision(x1,y1,x2,y2,thick,obsVx,obsVy,rest) {
   const nx = d>0.001?dx/d:0, ny = d>0.001?dy/d:1;
   puck.x += nx*(minD-d+1); puck.y += ny*(minD-d+1);
   applyReflect(nx, ny, obsVx, obsVy, rest);
+  playBounce(Math.hypot(puck.vx, puck.vy));
   spawnParticles(puck.x, puck.y);
 }
 
@@ -880,11 +1000,6 @@ function drawDragGuide() {
     ctx.beginPath(); ctx.arc(px,py,Math.max(puck.r*.2*(1-i/42),1.5),0,Math.PI*2);
     ctx.fillStyle=`rgba(255,255,255,${.55*(1-i/36)})`; ctx.fill();
   }
-  const sa=Math.atan2(dy,dx)-Math.PI/2;
-  ctx.beginPath(); ctx.arc(puck.x,puck.y,puck.r+5,sa,sa+Math.PI*power*2);
-  const ag=ctx.createLinearGradient(puck.x-puck.r,puck.y,puck.x+puck.r,puck.y);
-  ag.addColorStop(0,'rgba(74,222,128,0.8)'); ag.addColorStop(.5,'rgba(250,204,21,0.8)'); ag.addColorStop(1,'rgba(234,88,12,0.9)');
-  ctx.strokeStyle=power>.1?ag:'rgba(255,255,255,0.5)'; ctx.lineWidth=3; ctx.lineCap='round'; ctx.stroke();
   ctx.restore();
   const angleDeg=Math.round(Math.atan2(-dy,dx)*180/Math.PI);
   document.getElementById('angle-display').textContent=`angle ${angleDeg>0?'+':''}${angleDeg}°`;
@@ -924,7 +1039,7 @@ function onDown(e){
   if(state!=='idle')return; e.preventDefault();
   const pos=getPos(e);
   state='dragging';
-  dragStart={x:puck.x, y:puck.y};
+  dragStart={...pos};
   dragCurrent={...pos};
 }
 function onMove(e){ if(state!=='dragging')return; e.preventDefault(); dragCurrent=getPos(e); }
@@ -943,6 +1058,7 @@ function shoot(){
   if(dist<8){state='idle';dragStart=dragCurrent=null;return;}
   const power=Math.min(dist/(Math.min(W,H)*.35),1);
   puck.vx=dx/dist*power*1400; puck.vy=dy/dist*power*1400;
+  playHit(Math.hypot(puck.vx, puck.vy));
   particles=[]; state='sliding'; shotCount++;
   dragStart=dragCurrent=null;
   document.getElementById('power-fill').style.width='0%';
