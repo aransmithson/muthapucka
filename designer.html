@@ -2119,6 +2119,8 @@ function cleanForExport(lvls) {
         out.x = +o.x.toFixed(4); out.y = +o.y.toFixed(4); out.r = +o.r.toFixed(4);
         delete out._rotation;
         if (o.linkedTo) out.linkedTo = o.linkedTo;
+        // Preserve id on pipe-out so game can match linkedTo references
+        if (o.type === 'pipe-out') out.id = o._id;
       }
       // Rotated rects → export as diagonal (capsule) so game physics works at any angle
       if (o.type === 'rect' && o._rotation) {
