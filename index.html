@@ -176,64 +176,40 @@ async function fetchCourse(url){
 // ═══════════════════════════════════════════════════════════
 let detectedCourses=[];   // [{name, levels, _src}]
 
-// Fetch the directory listing to find all .json files in the web folder,
-// then fall back to probing well-known filenames for servers without autoindex.
-async function scanFolderForJson(){
-  const found=new Set();
-  try{
-    const r=await fetch('./',{cache:'no-cache'});
-    if(r.ok){
-      const html=await r.text();
-      const re=/href="([^"#?]+\.json)"/gi;
-      let m;
-      while((m=re.exec(html))!==null){
-        const f=m[1];
-        if(!f.startsWith('http')&&!f.startsWith('/')&&!f.includes('..')){
-          found.add(f);
-        }
-      }
-    }
-  }catch(e){}
-
-  // Always probe these so the game works on servers without directory listings
-  ['courses.json','mutha-pucka-golf-levels.json','puck-golf-levels.json','levels.json','course.json','holes.json']
-    .forEach(f=>found.add(f));
-
-  return [...found];
-}
-
+// Load courses.json manifest, then fall back to probing known filenames.
+// To add a course: add an entry to courses.json in your web folder.
 async function detectAndShowStart(){
   detectedCourses=[];
 
-  const jsonFiles=await scanFolderForJson();
-
-  for(const filename of jsonFiles){
-    try{
-      const r=await fetch(filename,{cache:'no-cache'});
-      if(!r.ok) continue;
+  // 1. Try courses.json manifest first — most reliable approach
+  try{
+    const r=await fetch('courses.json',{cache:'no-cache'});
+    if(r.ok){
       const raw=await r.json();
-
-      // Format A: manifest  [{name, file}]  or  [{name, levels:[…]}]
-      if(Array.isArray(raw)&&raw.length&&(raw[0].file||raw[0].levels)){
+      // Manifest format: [{name, file}] or [{name, levels:[…]}]
+      if(Array.isArray(raw)){
         for(const entry of raw){
           if(entry.levels){
-            try{ detectedCourses.push({name:entry.name||'Course', levels:normaliseLevels(entry.levels), _src:filename}); }catch(e){}
+            try{ detectedCourses.push({name:entry.name||'Course', levels:normaliseLevels(entry.levels), _src:'courses.json'}); }catch(e){}
           } else if(entry.file){
             const lvls=await fetchCourse(entry.file);
             if(lvls) detectedCourses.push({name:entry.name||prettyName(entry.file), levels:lvls, _src:entry.file});
           }
         }
-        continue;
       }
+    }
+  }catch(e){}
 
-      // Format B: plain holes array  [{name, par, puck, hole, …}]
-      try{
-        const lvls=normaliseLevels(Array.isArray(raw)?raw:[raw]);
-        const alreadyLoaded=detectedCourses.some(c=>c._src===filename);
-        if(!alreadyLoaded) detectedCourses.push({name:prettyName(filename), levels:lvls, _src:filename});
-      }catch(e){}
-
-    }catch(e){}
+  // 2. If no manifest, probe common fallback filenames
+  if(!detectedCourses.length){
+    const fallbacks=[
+      'mutha-pucka-golf-levels.json','puck-golf-levels.json',
+      'levels.json','course.json','holes.json'
+    ];
+    for(const f of fallbacks){
+      const lvls=await fetchCourse(f);
+      if(lvls) detectedCourses.push({name:prettyName(f), levels:lvls, _src:f});
+    }
   }
 
   buildStartScreen();
