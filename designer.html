@@ -330,10 +330,6 @@ select.px-input { cursor: pointer; }
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M12 10V4M14 12l5-3M12 14v6M10 12l-5 3"/></svg>
         Windmill
       </button>
-      <button class="tool-btn" id="tool-blower" onclick="setTool('blower')" data-tip="Place wind blower">
-        <svg width="16" height="16" fill="none" stroke="#38bdf8" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="8" cy="12" r="3"/><path d="M11 12h10M17 9l3 3-3 3" stroke="#38bdf8"/></svg>
-        Blower
-      </button>
       <button class="tool-btn" id="tool-moving" onclick="setTool('moving')" data-tip="Moving block obstacle">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="2" y="9" width="8" height="6" rx="2"/><path d="M10 12h12M18 9l3 3-3 3"/></svg>
         Mover
@@ -795,7 +791,7 @@ function onUp(e) {
       saveUndo();
       item._id = uid();
       const lvl = currentLevel();
-      const isMoving = ['moving', 'orbit', 'windmill', 'blower'].includes(activeTool);
+      const isMoving = ['moving', 'orbit', 'windmill'].includes(activeTool);
       if (isMoving) lvl.moving.push(item);
       else lvl.obstacles.push(item);
       selectedId = item._id;
@@ -839,19 +835,15 @@ function buildPreview(tool, start, end, finalize = false) {
   }
 
   if (tool === 'moving') {
-    const x = Math.min(sx, ex), y = Math.min(sy, ey);
-    const w = Math.abs(ex - sx), h = Math.abs(ey - sy);
-    if (finalize && (w < minSize || h < minSize)) return null;
-    return { type: 'rect', x: px2nx(x), y: px2ny(y), w: px2nx(Math.max(w, 0.04)), h: px2ny(Math.max(h, 0.04)), axis: 'x', range: 0.3, speed: 1.2, _moving: true };
+    // Blowers are always a fixed size - place at start position
+    const fixedW = 0.06; // Fixed width in normalized coordinates
+    const fixedH = 0.06; // Fixed height in normalized coordinates
+    return { type: 'rect', x: px2nx(sx) - fixedW/2, y: px2ny(sy) - fixedH/2, w: fixedW, h: fixedH, axis: 'x', range: 0.3, speed: 1.2, _moving: true };
   }
 
   if (tool === 'orbit') {
     const r = Math.hypot(ex - sx, ey - sy);
     return { type: 'orbit', shape: 'circle', x: px2nx(sx), y: px2ny(sy), r: 0.035, orbitR: nMin(Math.max(r, 20)), orbitSpeed: 1.5, orbitPhase: 0 };
-  }
-
-  if (tool === 'blower') {
-    return { type: 'blower', x: px2nx(sx), y: px2ny(sy), direction: 0, force: 1.0, range: 0.22 };
   }
 
   if (tool === 'pipe-in') {
@@ -1022,9 +1014,9 @@ function hitItem(item, x, y) {
     }
     return x >= px && x <= px + pw && y >= py && y <= py + ph;
   }
-  if (t === 'circle' || t === 'windmill' || t === 'orbit' || t === 'pipe-in' || t === 'pipe-out' || t === 'blower') {
+  if (t === 'circle' || t === 'windmill' || t === 'orbit' || t === 'pipe-in' || t === 'pipe-out') {
     const cx = nx2px(item.x), cy = ny2py(item.y);
-    const r = t === 'windmill' ? minPx(0.06) : t === 'orbit' ? minPx(0.05) : t === 'blower' ? minPx(item.range || 0.22) * 0.15 : minPx(item.r);
+    const r = t === 'windmill' ? minPx(0.06) : t === 'orbit' ? minPx(0.05) : minPx(item.r);
     return Math.hypot(x - cx, y - cy) < r + 6;
   }
   if (t === 'diagonal') {
@@ -1059,30 +1051,19 @@ function render() {
 }
 
 function drawBackground() {
-  ctx.fillStyle = '#3a6647';
+  ctx.fillStyle = '#3d6b4a';
   ctx.fillRect(0, 0, W, H);
-
-  // Mowing stripe texture
-  const stripeW = Math.max(16, W / 14);
-  for (let i = 0; i * stripeW < W; i++) {
-    ctx.fillStyle = i % 2 === 0 ? 'rgba(0,0,0,0.055)' : 'rgba(255,255,255,0.025)';
-    ctx.fillRect(i * stripeW, 0, stripeW, H);
-  }
-
-  // Fine grain noise
-  ctx.save(); ctx.globalAlpha = 0.025;
-  for (let i = 0; i < W; i += 3) for (let j = 0; j < H; j += 3) {
-    const v = ((i*179+j*97)^(i*31+j*211)) & 0xff;
-    ctx.fillStyle = v > 128 ? '#fff' : '#000';
+  // Texture
+  ctx.save(); ctx.globalAlpha = 0.04;
+  for (let i = 0; i < W; i += 4) for (let j = 0; j < H; j += 4) {
+    ctx.fillStyle = ((i * 7 + j * 13) % 255) > 127 ? '#fff' : '#000';
     ctx.fillRect(i, j, 2, 2);
   }
   ctx.restore();
-
   // Vignette
-  const vg = ctx.createRadialGradient(W/2, H/2, Math.min(W,H)*.05, W/2, H/2, Math.max(W,H)*.72);
-  vg.addColorStop(0, 'rgba(100,180,100,0.06)');
-  vg.addColorStop(0.6, 'rgba(0,0,0,0)');
-  vg.addColorStop(1, 'rgba(0,0,0,0.32)');
+  const vg = ctx.createRadialGradient(W/2, H/2, Math.min(W,H)*.1, W/2, H/2, Math.max(W,H)*.8);
+  vg.addColorStop(0, 'rgba(255,255,255,0.04)');
+  vg.addColorStop(1, 'rgba(0,0,0,0.25)');
   ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
 }
 
@@ -1140,7 +1121,7 @@ function drawPipeConnections() {
 
 function drawStaticItem(item, selected = false) {
   ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,0.55)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 2;
+  ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 8;
 
   if (item.type === 'rect') {
     const px = nx2px(item.x), py = ny2py(item.y);
@@ -1151,61 +1132,35 @@ function drawStaticItem(item, selected = false) {
       ctx.translate(cx, cy); ctx.rotate(rot); ctx.translate(-cx, -cy);
     }
     ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(px, py, pw, ph, 6); else ctx.rect(px, py, pw, ph);
+    if (ctx.roundRect) ctx.roundRect(px, py, pw, ph, 5); else ctx.rect(px, py, pw, ph);
     const g = ctx.createLinearGradient(px, py, px, py + ph);
-    g.addColorStop(0, '#555250'); g.addColorStop(0.5, '#3d3b39'); g.addColorStop(1, '#252321');
+    g.addColorStop(0, '#4a4745'); g.addColorStop(1, '#2c2a28');
     ctx.fillStyle = g; ctx.fill();
-    ctx.strokeStyle = selected ? '#f97316' : 'rgba(255,255,255,0.14)';
-    ctx.lineWidth = selected ? 2 : 1.2; ctx.stroke();
-    // Top shine
-    if (!selected) {
-      ctx.save();
-      ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(px+1, py+1, pw-2, Math.min(ph-2,6), 4); else ctx.rect(px+1,py+1,pw-2,6);
-      const sh=ctx.createLinearGradient(px,py,px,py+8);
-      sh.addColorStop(0,'rgba(255,255,255,0.10)'); sh.addColorStop(1,'rgba(255,255,255,0)');
-      ctx.fillStyle=sh; ctx.fill();
-      ctx.restore();
-    }
+    ctx.strokeStyle = selected ? '#f97316' : 'rgba(255,255,255,0.1)';
+    ctx.lineWidth = selected ? 2 : 1; ctx.stroke();
   }
 
   if (item.type === 'circle') {
     const cx = nx2px(item.x), cy = ny2py(item.y), cr = minPx(item.r);
     ctx.beginPath(); ctx.arc(cx, cy, cr, 0, Math.PI * 2);
-    const g = ctx.createRadialGradient(cx - cr * .35, cy - cr * .35, cr * .05, cx, cy, cr);
-    g.addColorStop(0, '#6a6764'); g.addColorStop(0.6, '#3d3b39'); g.addColorStop(1, '#1e1d1c');
+    const g = ctx.createRadialGradient(cx - cr * .3, cy - cr * .3, cr * .1, cx, cy, cr);
+    g.addColorStop(0, '#5a5755'); g.addColorStop(1, '#2c2a28');
     ctx.fillStyle = g; ctx.fill();
-    ctx.strokeStyle = selected ? '#f97316' : 'rgba(255,255,255,0.12)';
+    ctx.strokeStyle = selected ? '#f97316' : 'rgba(255,255,255,0.1)';
     ctx.lineWidth = selected ? 2 : 1.5; ctx.stroke();
-    // Specular glint
-    if (!selected) {
-      ctx.save();
-      ctx.beginPath(); ctx.arc(cx-cr*.28,cy-cr*.3,cr*.25,0,Math.PI*2);
-      const glint=ctx.createRadialGradient(cx-cr*.28,cy-cr*.3,0,cx-cr*.28,cy-cr*.3,cr*.25);
-      glint.addColorStop(0,'rgba(255,255,255,0.14)'); glint.addColorStop(1,'rgba(255,255,255,0)');
-      ctx.fillStyle=glint; ctx.fill();
-      ctx.restore();
-    }
   }
 
   if (item.type === 'diagonal') {
     const x1 = nx2px(item.x1), y1 = ny2py(item.y1);
     const x2 = nx2px(item.x2), y2 = ny2py(item.y2);
     const thick = minPx(item.thickness);
-    const len = Math.hypot(x2-x1, y2-y1);
     ctx.lineCap = 'round';
-    // Shadow pass
     ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
-    ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineWidth = thick * 2 + 6; ctx.stroke();
-    // Body
+    ctx.strokeStyle = '#2c2a28'; ctx.lineWidth = thick * 2 + 4; ctx.stroke();
     ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
-    const nx = -(y2-y1)/len, ny = (x2-x1)/len;
-    const g = ctx.createLinearGradient(x1+nx*thick,y1+ny*thick,x1-nx*thick,y1-ny*thick);
-    g.addColorStop(0,'#595755'); g.addColorStop(0.45,'#484644'); g.addColorStop(1,'#272524');
+    const g = ctx.createLinearGradient(x1, y1, x2, y2);
+    g.addColorStop(0, '#5a5755'); g.addColorStop(.5, '#4a4745'); g.addColorStop(1, '#3a3735');
     ctx.strokeStyle = g; ctx.lineWidth = thick * 2; ctx.stroke();
-    // Edge highlight
-    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
-    ctx.strokeStyle = 'rgba(255,255,255,0.11)'; ctx.lineWidth = Math.max(1.5, thick*0.4); ctx.stroke();
-
     if (selected) {
       ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
       ctx.strokeStyle = 'rgba(249,115,22,0.6)'; ctx.lineWidth = 2; ctx.stroke();
@@ -1224,8 +1179,7 @@ function drawStaticItem(item, selected = false) {
 
 function drawMovingItem(item, selected = false) {
   ctx.save();
-  const pulse = 0.5 + 0.5*Math.sin(Date.now()/380);
-  ctx.shadowColor = `rgba(220,100,20,${0.35+pulse*0.25})`; ctx.shadowBlur = 14;
+  ctx.shadowColor = `rgba(194,65,12,0.4)`; ctx.shadowBlur = 12;
 
   if (item.type === 'rect' && item._moving) {
     const px = nx2px(item.x), py = ny2py(item.y);
@@ -1236,21 +1190,13 @@ function drawMovingItem(item, selected = false) {
       ctx.translate(cx2, cy2); ctx.rotate(rot); ctx.translate(-cx2, -cy2);
     }
     ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(px, py, pw, ph, 6); else ctx.rect(px, py, pw, ph);
-    const g = ctx.createLinearGradient(px, py, px, py + ph);
-    g.addColorStop(0, '#8a7060'); g.addColorStop(0.5, '#5e4a38'); g.addColorStop(1, '#3a2c20');
+    if (ctx.roundRect) ctx.roundRect(px, py, pw, ph, 5); else ctx.rect(px, py, pw, ph);
+    const g = ctx.createLinearGradient(px, py, px + pw, py + ph);
+    g.addColorStop(0, '#7a6354'); g.addColorStop(1, '#4a3728');
     ctx.fillStyle = g; ctx.fill();
-    ctx.strokeStyle = selected ? '#f97316' : `rgba(220,150,90,${0.25+pulse*0.15})`;
-    ctx.lineWidth = selected ? 2 : 1.5; ctx.stroke();
-    // Top highlight
-    if (!selected) {
-      ctx.save();
-      ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(px+1,py+1,pw-2,Math.min(ph-2,5),4); else ctx.rect(px+1,py+1,pw-2,5);
-      const sh=ctx.createLinearGradient(px,py,px,py+7);
-      sh.addColorStop(0,'rgba(255,200,140,0.15)'); sh.addColorStop(1,'rgba(255,200,140,0)');
-      ctx.fillStyle=sh; ctx.fill(); ctx.restore();
-    }
-    // Movement indicator
+    ctx.strokeStyle = selected ? '#f97316' : 'rgba(200,140,100,0.3)';
+    ctx.lineWidth = selected ? 2 : 1; ctx.stroke();
+    // Movement indicator (skip if rotated for clarity)
     if (!rot) {
       if (item.axis === 'x') {
         const range = (item.range || 0.3) * W / 2;
@@ -1312,50 +1258,23 @@ function drawMovingItem(item, selected = false) {
     const orbitR = minPx(item.orbitR || 0.15);
     const r = minPx(item.r || 0.035);
     // Orbit ring
-    const pulse2 = 0.5+0.5*Math.sin(Date.now()/380);
-    ctx.save(); ctx.globalAlpha = 0.18;
+    ctx.save(); ctx.globalAlpha = 0.2;
     ctx.setLineDash([3, 7]);
-    ctx.strokeStyle = `rgba(220,150,90,${0.4+pulse2*0.2})`; ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(200,140,100,0.5)'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(cx, cy, orbitR, 0, Math.PI * 2); ctx.stroke();
     ctx.setLineDash([]);
     ctx.restore();
     // Body at preview position
-    const opx = cx + orbitR;
-    ctx.beginPath(); ctx.arc(opx, cy, r, 0, Math.PI * 2);
-    const g = ctx.createRadialGradient(opx - r*.35, cy - r*.35, r*.05, opx, cy, r);
-    g.addColorStop(0, '#9a8070'); g.addColorStop(0.6, '#5e4a38'); g.addColorStop(1, '#2e2218');
+    const px = cx + orbitR;
+    ctx.beginPath(); ctx.arc(px, cy, r, 0, Math.PI * 2);
+    const g = ctx.createRadialGradient(px - r*.3, cy - r*.3, r*.1, px, cy, r);
+    g.addColorStop(0, '#8a7364'); g.addColorStop(1, '#4a3728');
     ctx.fillStyle = g; ctx.fill();
-    ctx.strokeStyle = selected ? '#f97316' : `rgba(220,150,90,${0.25+pulse2*0.15})`;
+    ctx.strokeStyle = selected ? '#f97316' : 'rgba(200,140,100,0.3)';
     ctx.lineWidth = selected ? 2 : 1.5; ctx.stroke();
     // Center dot
-    ctx.beginPath(); ctx.arc(cx, cy, 3.5, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(220,150,90,0.5)`; ctx.fill();
-  }
-
-  if (item.type === 'blower') {
-    const cx = nx2px(item.x), cy = ny2py(item.y);
-    const range = minPx(item.range || 0.22);
-    const dirRad = ((item.direction || 0) * Math.PI / 180);
-    const coneSpread = Math.PI/3.5;
-    ctx.save();
-    const grd2 = ctx.createRadialGradient(cx,cy,6,cx,cy,range);
-    grd2.addColorStop(0,"rgba(56,189,248,0.25)");
-    grd2.addColorStop(1,"rgba(56,189,248,0)");
-    ctx.beginPath();ctx.moveTo(cx,cy);
-    ctx.arc(cx,cy,range,dirRad-coneSpread,dirRad+coneSpread);
-    ctx.closePath();ctx.fillStyle=grd2;ctx.fill();
-    const bodyR = range*0.13;
-    ctx.beginPath();ctx.arc(cx,cy,bodyR*1.6,0,Math.PI*2);
-    ctx.fillStyle="#1e293b";ctx.fill();
-    ctx.strokeStyle=selected?"#38bdf8":"rgba(56,189,248,0.5)";
-    ctx.lineWidth=selected?2:1.5;ctx.stroke();
-    ctx.translate(cx,cy);ctx.rotate(dirRad);
-    ctx.strokeStyle="rgba(56,189,248,0.8)";ctx.lineWidth=1.5;
-    ctx.beginPath();ctx.moveTo(bodyR*2,0);ctx.lineTo(bodyR*3.5,0);
-    ctx.moveTo(bodyR*3.5,0);ctx.lineTo(bodyR*2.8,-bodyR*0.6);
-    ctx.moveTo(bodyR*3.5,0);ctx.lineTo(bodyR*2.8,bodyR*0.6);
-    ctx.stroke();
-    ctx.restore();
+    ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(200,140,100,0.4)'; ctx.fill();
   }
 
   ctx.restore();
@@ -1365,74 +1284,51 @@ function drawPipeItem(item, selected = false) {
   const cx = nx2px(item.x), cy = ny2py(item.y);
   const r = minPx(item.r || 0.04);
   const isIn = item.type === 'pipe-in';
+  const col = isIn ? '#22d3ee' : '#a78bfa';
+  const col2 = isIn ? '#0891b2' : '#7c3aed';
+  const rot = item._rotation || 0;
 
   ctx.save();
-  ctx.shadowBlur = selected ? 20 : 12;
+  if (rot) { ctx.translate(cx, cy); ctx.rotate(rot); ctx.translate(-cx, -cy); }
+  ctx.shadowColor = col; ctx.shadowBlur = selected ? 18 : 10;
 
+  // Outer ring
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  const g = ctx.createRadialGradient(cx - r*.3, cy - r*.3, r*.1, cx, cy, r);
+  g.addColorStop(0, col); g.addColorStop(1, col2);
+  ctx.fillStyle = g; ctx.fill();
+  ctx.strokeStyle = selected ? '#fff' : 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = selected ? 2 : 1; ctx.stroke();
+
+  // Inner symbol
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
   if (isIn) {
-    // ── Pipe-in: dark pit with subtle green glow ──
-    ctx.shadowColor = selected ? '#4ade80' : 'rgba(0,0,0,0.8)';
-    // Ground shadow
-    const shadow = ctx.createRadialGradient(cx, cy, r*0.3, cx, cy, r*3);
-    shadow.addColorStop(0, 'rgba(0,0,0,0.4)'); shadow.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = shadow; ctx.beginPath(); ctx.arc(cx, cy, r*3, 0, Math.PI*2); ctx.fill();
-    // Dark pit
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2);
-    const pit = ctx.createRadialGradient(cx, cy-r*.2, r*.1, cx, cy+r*.3, r*1.2);
-    pit.addColorStop(0, '#020a03'); pit.addColorStop(1, '#0d1a0d');
-    ctx.fillStyle = pit; ctx.fill();
-    // Rim
-    ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI*1.1, Math.PI*1.9);
-    ctx.strokeStyle = selected ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.18)';
-    ctx.lineWidth = selected ? 2 : 1.5; ctx.stroke();
-    ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI*-0.1, Math.PI*1.1);
-    ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 2; ctx.stroke();
-    // Green inner glow
-    ctx.beginPath(); ctx.arc(cx, cy, r*0.55, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(74,222,128,0.12)'; ctx.fill();
-    // Label
-    ctx.font = `bold ${Math.max(8, r*.5)}px DM Mono`;
-    ctx.fillStyle = 'rgba(74,222,128,0.8)'; ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle'; ctx.globalAlpha = 0.9;
-    ctx.fillText('IN', cx, cy + r * 1.7);
+    // Arrow pointing in (downward)
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - r*.4);
+    ctx.lineTo(cx, cy + r*.4);
+    ctx.moveTo(cx - r*.3, cy + r*.1);
+    ctx.lineTo(cx, cy + r*.4);
+    ctx.lineTo(cx + r*.3, cy + r*.1);
+    ctx.stroke();
   } else {
-    // ── Pipe-out: green concentric circles (rotation-independent) ──
-    ctx.shadowColor = selected ? '#86efac' : 'rgba(74,222,128,0.5)';
-    // Ground shadow
-    const shadow = ctx.createRadialGradient(cx, cy, r*0.5, cx, cy, r*2.8);
-    shadow.addColorStop(0, 'rgba(0,0,0,0.4)'); shadow.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = shadow; ctx.beginPath(); ctx.arc(cx, cy, r*2.8, 0, Math.PI*2); ctx.fill();
-    // Outer ring
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2);
-    const outerG = ctx.createRadialGradient(cx-r*.3, cy-r*.3, r*.05, cx, cy, r);
-    outerG.addColorStop(0, '#4a7a4a'); outerG.addColorStop(0.5, '#2d5a2d'); outerG.addColorStop(1, '#1a3a1a');
-    ctx.fillStyle = outerG; ctx.fill();
-    ctx.strokeStyle = selected ? '#86efac' : 'rgba(134,239,172,0.6)';
-    ctx.lineWidth = selected ? 2.5 : 2; ctx.stroke();
-    // Wall ring
-    ctx.beginPath(); ctx.arc(cx, cy, r*0.72, 0, Math.PI*2);
-    const wallG = ctx.createRadialGradient(cx-r*.2, cy-r*.2, r*.05, cx, cy, r*0.72);
-    wallG.addColorStop(0, '#3a6a3a'); wallG.addColorStop(1, '#1e481e');
-    ctx.fillStyle = wallG; ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1; ctx.stroke();
-    // Hollow centre
-    ctx.beginPath(); ctx.arc(cx, cy, r*0.48, 0, Math.PI*2);
-    const holeG = ctx.createRadialGradient(cx, cy, 0, cx, cy, r*0.48);
-    holeG.addColorStop(0, '#0a1a0a'); holeG.addColorStop(1, '#050d05');
-    ctx.fillStyle = holeG; ctx.fill();
-    ctx.fillStyle = 'rgba(74,222,128,0.15)'; ctx.fill();
-    // Specular
-    ctx.beginPath(); ctx.arc(cx-r*.28, cy-r*.28, r*.18, 0, Math.PI*2);
-    const spec = ctx.createRadialGradient(cx-r*.28, cy-r*.28, 0, cx-r*.28, cy-r*.28, r*.18);
-    spec.addColorStop(0, 'rgba(255,255,255,0.22)'); spec.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = spec; ctx.fill();
-    // Label
-    ctx.font = `bold ${Math.max(8, r*.5)}px DM Mono`;
-    ctx.fillStyle = '#86efac'; ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle'; ctx.globalAlpha = 0.9;
-    ctx.fillText('OUT', cx, cy + r * 1.7);
+    // Arrow pointing out (upward)
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + r*.4);
+    ctx.lineTo(cx, cy - r*.4);
+    ctx.moveTo(cx - r*.3, cy - r*.1);
+    ctx.lineTo(cx, cy - r*.4);
+    ctx.lineTo(cx + r*.3, cy - r*.1);
+    ctx.stroke();
   }
 
+  // Label
+  ctx.font = `bold ${Math.max(8, r*.5)}px DM Mono`;
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.globalAlpha = 0.7;
+  ctx.fillText(isIn ? 'IN' : 'OUT', cx, cy + r * 1.7);
   ctx.restore();
 }
 
@@ -1442,7 +1338,6 @@ function drawObstaclePreview(item) {
   else if (item.type === 'circle') drawStaticItem(item);
   else if (item.type === 'diagonal') drawStaticItem(item);
   else if (item.type === 'windmill') drawMovingItem(item);
-  else if (item.type === 'blower') drawMovingItem(item);
   else if (item.type === 'orbit') drawMovingItem(item);
   else if (item.type === 'pipe-in' || item.type === 'pipe-out') drawPipeItem(item);
   else if (item._moving) drawMovingItem(item);
@@ -1515,38 +1410,21 @@ function drawHole() {
   const hr = puckR * 1.15;
   const sel = selectedId === '__hole__';
   ctx.save();
-  if (sel) { ctx.shadowColor = '#facc15'; ctx.shadowBlur = 16; }
-
-  // Ground shadow surround
-  const shadow = ctx.createRadialGradient(hx,hy+hr*0.3,0,hx,hy,hr*3.2);
-  shadow.addColorStop(0,'rgba(0,0,0,0.5)'); shadow.addColorStop(0.4,'rgba(0,0,0,0.15)'); shadow.addColorStop(1,'rgba(0,0,0,0)');
-  ctx.fillStyle=shadow; ctx.beginPath(); ctx.arc(hx,hy,hr*3.2,0,Math.PI*2); ctx.fill();
-
-  // Hole pit
+  if (sel) {
+    ctx.shadowColor = '#facc15'; ctx.shadowBlur = 16;
+  }
+  const grd = ctx.createRadialGradient(hx, hy, 0, hx, hy, hr * 2.5);
+  grd.addColorStop(0, 'rgba(0,0,0,0.6)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(hx, hy, hr * 2.5, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(hx, hy, hr, 0, Math.PI * 2);
-  const pit=ctx.createRadialGradient(hx,hy-hr*.2,hr*.1,hx,hy+hr*.3,hr*1.2);
-  pit.addColorStop(0,'#0a0a0a'); pit.addColorStop(1,'#1a1816');
-  ctx.fillStyle=pit; ctx.fill();
-
-  // Rim highlights
-  ctx.save();
-  ctx.beginPath(); ctx.arc(hx,hy,hr,Math.PI*1.1,Math.PI*1.9);
-  ctx.strokeStyle = sel ? '#facc15' : 'rgba(255,255,255,0.2)';
-  ctx.lineWidth = sel ? 2.5 : 1.5; ctx.stroke();
-  ctx.beginPath(); ctx.arc(hx,hy,hr,Math.PI*-0.1,Math.PI*1.1);
-  ctx.strokeStyle='rgba(0,0,0,0.6)'; ctx.lineWidth=2; ctx.stroke();
-  ctx.restore();
-
-  // Flag pole
-  const px = hx + hr * .52;
-  ctx.strokeStyle = 'rgba(255,255,255,0.78)'; ctx.lineWidth = 1.5; ctx.lineCap='round';
-  ctx.beginPath(); ctx.moveTo(px, hy+hr*.3); ctx.lineTo(px, hy - hr * 3.6); ctx.stroke();
-
-  // Flag
+  ctx.fillStyle = '#111'; ctx.fill();
+  ctx.strokeStyle = sel ? '#facc15' : activeTool === 'hole' ? '#facc15' : 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = sel ? 2.5 : activeTool === 'hole' ? 2 : 1.5; ctx.stroke();
+  const px = hx + hr * .5;
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(px, hy); ctx.lineTo(px, hy - hr * 3.5); ctx.stroke();
   ctx.fillStyle = '#dc2626';
-  ctx.beginPath();
-  ctx.moveTo(px, hy - hr * 3.6); ctx.lineTo(px + hr * 1.7, hy - hr * 2.9); ctx.lineTo(px, hy - hr * 2.2);
-  ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(px, hy - hr * 3.5); ctx.lineTo(px + hr * 1.6, hy - hr * 2.8); ctx.lineTo(px, hy - hr * 2.1); ctx.closePath(); ctx.fill();
   ctx.restore();
 }
 
@@ -1556,23 +1434,15 @@ function drawPuck() {
   const r = Math.min(W, H) * 0.0285;
   const sel = selectedId === '__puck__';
   ctx.save();
-  ctx.shadowColor = sel ? '#facc15' : 'rgba(0,0,0,0.55)';
-  ctx.shadowBlur = sel ? 18 : 16;
-  ctx.shadowOffsetY = sel ? 0 : 4;
-  const g = ctx.createRadialGradient(px - r*.32, py - r*.36, r*.06, px + r*.1, py + r*.1, r*1.1);
-  g.addColorStop(0, '#f5f0e8'); g.addColorStop(0.35, '#ddd8d0'); g.addColorStop(0.75, '#bab5ad'); g.addColorStop(1, '#8a8480');
+  ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 3;
+  if (sel) { ctx.shadowColor = '#facc15'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 0; }
+  const g = ctx.createRadialGradient(px - r*.3, py - r*.3, r*.1, px, py, r);
+  g.addColorStop(0, '#f0eae2'); g.addColorStop(.6, '#d4cdc5'); g.addColorStop(1, '#a09890');
   ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
-  ctx.shadowColor = 'transparent';
-  ctx.strokeStyle = sel ? '#facc15' : activeTool === 'puck' ? '#facc15' : 'rgba(255,255,255,0.35)';
+  ctx.strokeStyle = sel ? '#facc15' : activeTool === 'puck' ? '#facc15' : 'rgba(255,255,255,0.4)';
   ctx.lineWidth = sel ? 2.5 : activeTool === 'puck' ? 2 : 1.5; ctx.stroke();
-  // Specular
-  ctx.save();
-  ctx.beginPath(); ctx.arc(px-r*.3,py-r*.33,r*.18,0,Math.PI*2);
-  const sp=ctx.createRadialGradient(px-r*.3,py-r*.33,0,px-r*.3,py-r*.33,r*.18);
-  sp.addColorStop(0,'rgba(255,255,255,0.5)'); sp.addColorStop(1,'rgba(255,255,255,0)');
-  ctx.fillStyle=sp; ctx.fill(); ctx.restore();
-  ctx.beginPath(); ctx.arc(px, py, r * .13, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fill();
+  ctx.beginPath(); ctx.arc(px, py, r * .15, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fill();
   ctx.restore();
 }
 
@@ -1741,23 +1611,6 @@ function buildPropsHTML(item) {
     html += `</div>` + R();
   }
 
-  else if (t === 'blower') {
-    html = '<div class="prop-heading">Blower</div><div class="px-grid">';
-    html += P('x', 'X', item.x * W, 0, W);
-    html += P('y', 'Y', item.y * H, 0, H);
-    html += '</div><div class="prop-subgroup">';
-    html += '<div class="px-row"><span class="px-label">Direction</span>';
-    html += '<input class="px-input" type="number" value="'+(item.direction||0)+'" min="0" max="359" step="5"';
-    html += ` oninput="setProp(${JSON.stringify(id)},'direction',+this.value)"></div>`;
-    html += '<div class="px-row"><span class="px-label">Force</span>';
-    html += '<input class="px-input" type="number" value="'+(+(item.force||1).toFixed(2))+'" min="0.1" max="5" step="0.1"';
-    html += ` oninput="setProp(${JSON.stringify(id)},'force',+this.value)"></div>`;
-    html += '<div class="px-row"><span class="px-label">Range</span>';
-    html += '<input class="px-input" type="number" value="'+(+(item.range||0.22).toFixed(3))+'" min="0.05" max="0.8" step="0.01"';
-    html += ` oninput="setProp(${JSON.stringify(id)},'range',+this.value)"></div>`;
-    html += '</div>' + R();
-  }
-
   else if (t === 'orbit') {
     html += P('x', 'X', item.x * W, 0, W);
     html += P('y', 'Y', item.y * H, 0, H);
@@ -1847,7 +1700,7 @@ window.setRotPx = function(id, deg) {
 function typeLabel(t) {
   const map = {
     rect: 'Rectangle', circle: 'Circle', diagonal: 'Diagonal Wall',
-    windmill: 'Windmill', orbit: 'Orbit Object', blower: 'Blower',
+    windmill: 'Windmill', orbit: 'Orbit Object',
     'pipe-in': 'Pipe Entrance', 'pipe-out': 'Pipe Exit',
     '__puck__': 'Puck Start', '__hole__': 'Hole'
   };
@@ -1896,7 +1749,7 @@ window.duplicateItem = function(id) {
   if (copy.x1 !== undefined) { copy.x1 += 0.03; copy.x2 += 0.03; copy.y1 += 0.03; copy.y2 += 0.03; }
   delete copy.linkedTo;
   const lvl = currentLevel();
-  const isMoving = copy._moving || ['windmill','orbit','blower'].includes(copy.type);
+  const isMoving = copy._moving || ['windmill','orbit'].includes(copy.type);
   if (isMoving) lvl.moving.push(copy);
   else lvl.obstacles.push(copy);
   selectedId = copy._id;
@@ -1909,12 +1762,12 @@ window.duplicateItem = function(id) {
 // LAYERS LIST
 // ══════════════════════════════════════════════════════════════
 const LAYER_ICONS = {
-  rect: '▬', circle: '●', diagonal: '╱', windmill: '✳', orbit: '◎', blower: '💨',
+  rect: '▬', circle: '●', diagonal: '╱', windmill: '✳', orbit: '◎',
   'pipe-in': '↓', 'pipe-out': '↑'
 };
 const LAYER_COLORS = {
   rect: '#a8a29e', circle: '#a8a29e', diagonal: '#a8a29e',
-  windmill: '#f97316', orbit: '#f97316', blower: '#38bdf8',
+  windmill: '#f97316', orbit: '#f97316',
   'pipe-in': '#22d3ee', 'pipe-out': '#a78bfa'
 };
 
@@ -2142,8 +1995,6 @@ function cleanForExport(lvls) {
         out.x = +o.x.toFixed(4); out.y = +o.y.toFixed(4); out.r = +o.r.toFixed(4);
         delete out._rotation;
         if (o.linkedTo) out.linkedTo = o.linkedTo;
-        // Preserve id on pipe-out so game can match linkedTo references
-        if (o.type === 'pipe-out') out.id = o._id;
       }
       // Rotated rects → export as diagonal (capsule) so game physics works at any angle
       if (o.type === 'rect' && o._rotation) {
@@ -2174,7 +2025,6 @@ function cleanForExport(lvls) {
       const out = { ...o };
       delete out._id; delete out._previewAngle;
       if (o.type === 'windmill') { out.x = +o.x.toFixed(4); out.y = +o.y.toFixed(4); delete out._rotation; }
-      if (o.type === 'blower') { out.x = +o.x.toFixed(4); out.y = +o.y.toFixed(4); delete out._rotation; delete out._moving; }
       if (o.type === 'orbit') { out.x = +o.x.toFixed(4); out.y = +o.y.toFixed(4); out.r = +o.r.toFixed(4); out.orbitR = +o.orbitR.toFixed(4); delete out._rotation; }
       if (o.type === 'rect') { out.x = +o.x.toFixed(4); out.y = +o.y.toFixed(4); out.w = +o.w.toFixed(4); out.h = +o.h.toFixed(4); delete out._moving; delete out._rotation; }
       clean.moving.push(out);
